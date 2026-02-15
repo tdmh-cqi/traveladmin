@@ -3,41 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDMH Admin | Travel Management</title>
+    <title>TDMH Admin Console</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #f4f7f6; font-family: 'Inter', sans-serif; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .btn-animate { transition: transform 0.2s; cursor: pointer; }
-        .btn-animate:hover { transform: translateY(-2px); }
-        .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-        .status-pending { background: #fff3cd; color: #856404; animation: blink 1.5s infinite; }
+        body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn-animate { transition: all 0.2s; cursor: pointer; border-radius: 8px; }
+        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        .btn-animate:active { transform: scale(0.95); }
+        .status-pill { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+        .status-pending { background: #fff3cd; color: #856404; animation: pulse 2s infinite; }
         .status-approved { background: #d1e7dd; color: #0f5132; }
-        @keyframes blink { 50% { opacity: 0.6; } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         #adminPanel { display: none; }
-        .endorse-box { background: #fce4ec; border-left: 4px solid #f06292; padding: 10px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
+        .endorse-box { background: #fff5f5; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
+        .search-box { border-radius: 20px; padding-left: 40px; }
+        .search-container { position: relative; }
+        .search-container i { position: absolute; left: 15px; top: 10px; color: #aaa; }
     </style>
 </head>
 <body>
 
-<div class="container py-4">
-    <div id="loginSection" class="card p-4 text-center mx-auto shadow-lg" style="max-width: 400px; margin-top: 80px;">
-        <i class="bi bi-shield-lock text-primary display-4 mb-3"></i>
+<div class="container py-4" style="max-width: 900px;">
+    <div id="loginSection" class="card p-4 mx-auto text-center shadow-lg" style="max-width: 400px; margin-top: 100px;">
+        <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
         <h4 class="fw-bold">Admin Portal</h4>
         <div class="input-group my-3">
             <input type="password" id="passInput" class="form-control" placeholder="Password">
             <button class="btn btn-outline-secondary" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
         </div>
-        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">LOGIN</button>
+        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">ACCESS QUEUE</button>
     </div>
 
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold mb-0 text-dark">Travel Queue</h3>
+            <h3 class="fw-bold text-dark"><i class="bi bi-bus-front"></i> Travel Queue</h3>
             <div>
-                <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2" onclick="showHistory()">Monthly History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate" onclick="fetchPending()">Sync Data</button>
+                <button class="btn btn-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
+                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
             </div>
         </div>
         <div id="queueList"></div>
@@ -46,20 +50,37 @@
 
 <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="fw-bold">Monthly History</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Monthly Activity Log</h5>
+                <div class="search-container" style="width: 300px;">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="historySearch" class="form-control form-control-sm search-box" placeholder="Search Name or Month..." onkeyup="filterHistory()">
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0" id="historyContent"></div>
+            <div class="modal-body p-0" id="historyContent" style="max-height: 70vh; overflow-y: auto;">
+                </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
+    const scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
+    let fullHistoryData = [];
+
+    // BROWSER-SIDE DATE CLEANER (Forced 12-hour format)
+    function forceCleanDate(raw) {
+        if (!raw || raw === "N/A") return "N/A";
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
+        return d.toLocaleString('en-US', { 
+            month: '2-digit', day: '2-digit', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        });
+    }
 
     function togglePass() {
         const input = document.getElementById('passInput');
@@ -73,7 +94,7 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-        } else { alert("Wrong Password"); }
+        } else { alert("Incorrect Password"); }
     }
 
     async function fetchPending() {
@@ -81,48 +102,46 @@
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
         const res = await fetch(`${scriptURL}?action=getPending`);
         const data = await res.json();
-        list.innerHTML = data.length ? "" : '<div class="text-center p-5 text-muted">No active requests.</div>';
+        list.innerHTML = data.length ? "" : '<div class="card p-5 text-center text-muted fw-bold">No active requests.</div>';
 
         data.forEach(req => {
             const isApp = req.status === "Approved";
+            const timeDisplay = forceCleanDate(req.time);
+
             list.innerHTML += `
                 <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div><h5 class="fw-bold text-primary mb-0">${req.name}</h5><p class="text-muted small mb-0">${req.dept} | ${req.time}</p></div>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="fw-bold text-primary mb-1">${req.name} <small class="text-muted fw-normal">(${req.dept})</small></h5>
+                            <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${timeDisplay}</div>
+                        </div>
                         <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                     </div>
-                    <div class="bg-light p-3 rounded mb-3">
-                        <div class="small fw-bold text-muted mb-1">PURPOSE:</div><div class="fw-bold mb-2">${req.purpose}</div>
-                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box">ENDORSEMENT: ${req.endorsement}</div>` : ''}
+                    <div class="bg-white border rounded p-3 my-3">
+                        <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
+                        <div class="fw-bold text-dark mb-2">${req.purpose}</div>
+                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
                     </div>
                     ${!isApp ? `
                         <div class="row g-2">
-                            <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
-                            <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Vehicle"></div>
-                            <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
-                            <div class="col-md-3"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                        </div>` : `
-                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
-                            <div class="col-md-6 small"><strong>Driver:</strong> ${req.driver} | <strong>Start:</strong> ${req.startOdo}</div>
-                            <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="End Odo"></div>
-                            <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH</button></div>
-                        </div>`}
+                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
+                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Plate #"></div>
+                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
+                            <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
+                            <div class="col-6"><div class="input-group">
+                                <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
+                                <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                            </div></div>
+                        </div>
+                    ` : `
+                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
+                            <div class="col-md-5 small"><strong>Driver:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
+                            <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
+                            <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
+                        </div>
+                    `}
                 </div>`;
         });
-    }
-
-    function process(name, status) {
-        const p = new URLSearchParams({ action: 'updateRequest', name, status });
-        const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
-        if(!dr || !vh || !odo) return alert("Fill all fields");
-        p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
-    }
-
-    function complete(name) {
-        const odo = document.getElementById(`odoE_${name}`).value;
-        if(!odo) return alert("Enter End Odo");
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
     }
 
     async function showHistory() {
@@ -130,15 +149,60 @@
         content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
         new bootstrap.Modal('#historyModal').show();
         const res = await fetch(`${scriptURL}?action=history`);
-        const data = await res.json();
-        content.innerHTML = `<table class="table table-hover mb-0">
-            <thead><tr><th>Name</th><th>Purpose/Endorsement</th><th>Status</th><th>Distance</th></tr></thead>
-            <tbody>${data.map(h => {
-                const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
-                return `<tr><td><strong>${h.name}</strong><br><small>${h.dept}</small></td><td>${h.purpose}<br><small class="text-danger">${h.endorsement || ''}</small></td><td>${h.status}</td><td>${dist} km</td></tr>`;
-            }).join('')}</tbody></table>`;
+        fullHistoryData = await res.json();
+        renderHistoryTable(fullHistoryData);
+    }
+
+    function renderHistoryTable(data) {
+        const content = document.getElementById('historyContent');
+        content.innerHTML = `
+            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light sticky-top">
+                    <tr><th>User/Date</th><th>Purpose/Endorsement</th><th>Status</th><th>Log Details</th></tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    ${data.map(h => {
+                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
+                        return `
+                        <tr>
+                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small><br><span class="text-primary fw-bold">${forceCleanDate(h.time)}</span></td>
+                            <td><div class="fw-bold">${h.purpose}</div><div class="text-danger small">${h.endorsement || ''}</div></td>
+                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
+                            <td><small>Driver: ${h.driver||'--'}</small><br><small>Distance: <strong>${dist} km</strong></small></td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function filterHistory() {
+        const query = document.getElementById('historySearch').value.toLowerCase();
+        const filtered = fullHistoryData.filter(h => 
+            h.name.toLowerCase().includes(query) || 
+            forceCleanDate(h.time).toLowerCase().includes(query)
+        );
+        renderHistoryTable(filtered);
+    }
+
+    function process(name, status) {
+        const p = new URLSearchParams({ action: 'updateRequest', name, status });
+        if(status === 'Approved') {
+            const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
+            if(!dr || !vh || !odo) return alert("Fill all details");
+            p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
+        } else {
+            const re = document.getElementById(`re_${name}`).value;
+            if(!re) return alert("Fill reason");
+            p.append('reason', re);
+        }
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
+    }
+
+    function complete(name) {
+        const odo = document.getElementById(`odoE_${name}`).value;
+        if(!odo) return alert("Enter End Odometer");
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
     }
 </script>
 </body>
 </html>
-
