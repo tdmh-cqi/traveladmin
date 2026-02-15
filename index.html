@@ -3,39 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDMH Admin | Travel Management</title>
+    <title>TDMH Admin Console</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #f4f7f6; font-family: 'Inter', sans-serif; color: #333; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .btn-animate { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
-        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-        .status-pending { background: #fff3cd; color: #856404; animation: blinker 1.5s linear infinite; }
-        .status-approved { background: #d1e7dd; color: #0f5132; }
-        @keyframes blinker { 50% { opacity: 0.6; } }
+        body { background: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .btn-animate { transition: all 0.2s; cursor: pointer; }
+        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .status-pending { background: #ffc107; color: #000; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+        .status-approved { background: #198754; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+        .endorse-text { color: #d63384; font-weight: bold; border-left: 3px solid #d63384; padding-left: 8px; font-size: 0.9rem; }
         #adminPanel { display: none; }
-        .endorse-box { background: #fce4ec; border-left: 4px solid #f06292; padding: 10px; border-radius: 4px; font-weight: bold; }
-        .date-text { font-weight: 600; color: #6c757d; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-<div class="container py-4">
-    <div id="loginSection" class="card p-4 text-center mx-auto shadow-lg" style="max-width: 400px; margin-top: 100px;">
-        <i class="bi bi-person-badge text-primary display-4 mb-3"></i>
-        <h4 class="fw-bold">Admin Portal</h4>
+<div class="container py-4" style="max-width: 850px;">
+    <div id="loginSection" class="card p-4 text-center mx-auto shadow-lg" style="max-width: 400px; margin-top: 50px;">
+        <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
+        <h4 class="fw-bold">Management Access</h4>
         <div class="input-group my-3">
-            <input type="password" id="passInput" class="form-control" placeholder="Management Password">
+            <input type="password" id="passInput" class="form-control" placeholder="Password">
             <button class="btn btn-outline-secondary" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
         </div>
-        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">LOGIN</button>
+        <button class="btn btn-primary w-100 fw-bold btn-animate rounded-pill" onclick="checkPass()">LOGIN</button>
     </div>
 
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold mb-0">Active Travel Queue</h3>
+            <h3 class="fw-bold text-dark mb-0">Live Queue</h3>
             <div>
                 <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
                 <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
@@ -49,18 +46,6 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
 
-    // Aggressive Date Fixer for the Browser
-    function cleanDate(raw) {
-        if (!raw || raw === "N/A") return "N/A";
-        const d = new Date(raw);
-        if (isNaN(d.getTime())) return raw; // Return raw if it's already a clean string
-        
-        return d.toLocaleString('en-US', { 
-            month: '2-digit', day: '2-digit', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
-        });
-    }
-
     function togglePass() {
         const input = document.getElementById('passInput');
         const icon = document.getElementById('toggleIcon');
@@ -73,63 +58,54 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-        } else { alert("Access Denied"); }
+        } else { alert("Wrong Password"); }
     }
 
     async function fetchPending() {
         const list = document.getElementById('queueList');
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
-        try {
-            const res = await fetch(`${scriptURL}?action=getPending`);
-            const data = await res.json();
-            list.innerHTML = data.length ? "" : '<div class="alert alert-secondary text-center p-5">Queue is empty.</div>';
+        const res = await fetch(`${scriptURL}?action=getPending`);
+        const data = await res.json();
+        list.innerHTML = data.length ? "" : '<div class="alert alert-light text-center">No active requests.</div>';
 
-            data.forEach(req => {
-                const isApp = req.status === "Approved";
-                const displayTime = cleanDate(req.time); // <--- THIS FORCES THE FIX
+        data.forEach(req => {
+            const isApp = req.status === "Approved";
+            list.innerHTML += `
+                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning'}">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h5 class="fw-bold text-primary mb-0">${req.name} <span class="text-muted fw-normal fs-6">(${req.dept})</span></h5>
+                        <span class="${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
+                    </div>
+                    <div class="small text-muted mb-3"><i class="bi bi-calendar3"></i> Scheduled: ${req.time}</div>
+                    
+                    <div class="bg-light p-3 rounded mb-3">
+                        <div class="small fw-bold text-uppercase text-muted">Purpose</div>
+                        <div class="fw-bold mb-2">${req.purpose}</div>
+                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-text">${req.endorsement}</div>` : ''}
+                    </div>
 
-                list.innerHTML += `
-                    <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h5 class="fw-bold text-primary mb-0">${req.name}</h5>
-                                <p class="date-text mb-0">${req.dept} | <i class="bi bi-clock"></i> ${displayTime}</p>
-                            </div>
-                            <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
+                    ${!isApp ? `
+                        <div class="row g-2">
+                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver Name"></div>
+                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Plate No."></div>
+                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odometer"></div>
+                            <div class="col-6"><button class="btn btn-success btn-sm w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE TRAVEL</button></div>
+                            <div class="col-6"><div class="input-group">
+                                <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Reason">
+                                <button class="btn btn-danger btn-sm btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                            </div></div>
                         </div>
-
-                        <div class="bg-light p-3 rounded mb-3">
-                            <div class="small fw-bold text-muted mb-1 text-uppercase">Purpose</div>
-                            <div class="fw-bold mb-2">${req.purpose}</div>
-                            ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box small">Endorsement: ${req.endorsement}</div>` : ''}
+                    ` : `
+                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
+                            <div class="col-md-6 small"><strong>Trip Details:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
+                            <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
+                            <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
                         </div>
-
-                        ${!isApp ? `
-                            <div class="row g-2">
-                                <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
-                                <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Plate #"></div>
-                                <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
-                                <div class="col-md-3"><button class="btn btn-success btn-sm w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                                <div class="col-12 mt-2">
-                                    <div class="input-group">
-                                        <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Deny Reason">
-                                        <button class="btn btn-danger btn-sm px-4 btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : `
-                            <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
-                                <div class="col-md-6 small"><strong>Assigned:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
-                                <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
-                                <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
-                            </div>
-                        `}
-                    </div>`;
-            });
-        } catch(e) { list.innerHTML = "Error loading data."; }
+                    `}
+                </div>`;
+        });
     }
 
-    // Process and History functions remain same but use cleanDate inside History too...
     function process(name, status) {
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
@@ -138,7 +114,7 @@
             p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
         } else {
             const re = document.getElementById(`re_${name}`).value;
-            if(!re) return alert("Provide a reason");
+            if(!re) return alert("Fill reason");
             p.append('reason', re);
         }
         fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
@@ -147,8 +123,7 @@
     function complete(name) {
         const odo = document.getElementById(`odoE_${name}`).value;
         if(!odo) return alert("Enter End Odometer");
-        const p = new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo });
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
     }
 </script>
 </body>
