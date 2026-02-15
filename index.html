@@ -17,6 +17,8 @@
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         #adminPanel { display: none; }
         .endorse-box { background: #fdf2f2; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
+        /* Fix for sticky header background */
+        .sticky-top { background-color: #f8f9fa !important; z-index: 1020; }
     </style>
 </head>
 <body>
@@ -48,10 +50,36 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header bg-dark text-white rounded-top-4">
-                <h5 class="fw-bold mb-0">Monthly Activity Log</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="d-flex align-items-center w-100">
+                    <h5 class="fw-bold mb-0 me-auto">Activity Log</h5>
+                    <div class="input-group input-group-sm w-50 me-3">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" id="historySearch" class="form-control border-0 bg-light" placeholder="Search by name or dept..." onkeyup="filterHistory()">
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
             </div>
-            <div class="modal-body p-0" id="historyContent"></div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 65vh;">
+                    <table class="table table-hover mb-0" id="historyTable" style="font-size: 0.85rem;">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>User</th>
+                                <th>Purpose/Endorsement</th>
+                                <th>Status</th>
+                                <th>Assignment</th>
+                                <th>Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyContent"></tbody>
+                    </table>
+                </div>
+                <div class="p-3 text-center bg-light border-top">
+                    <button id="loadMoreBtn" class="btn btn-outline-primary btn-sm px-4 rounded-pill fw-bold btn-animate" onclick="showHistory(true)">
+                        VIEW MORE RECORDS
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -60,13 +88,12 @@
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
+    let currentOffset = 0;
 
-    // BROWSER-SIDE DATE CLEANER (Forced 12-hour format)
     function forceCleanDate(raw) {
         if (!raw || raw === "N/A") return "N/A";
         const d = new Date(raw);
         if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
-        
         return d.toLocaleString('en-US', { 
             month: '2-digit', day: '2-digit', year: 'numeric', 
             hour: '2-digit', minute: '2-digit', hour12: true 
@@ -88,6 +115,7 @@
         } else { alert("Incorrect Password"); }
     }
 
+    // MAIN QUEUE LOGIC (KEEP UNCHANGED)
     async function fetchPending() {
         const list = document.getElementById('queueList');
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
@@ -157,32 +185,73 @@
         fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
     }
 
-    async function showHistory() {
+    // UPDATED HISTORY LOGIC WITH VEHICLE & PAGINATION
+    async function showHistory(isLoadMore = false) {
         const content = document.getElementById('historyContent');
-        content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
-        new bootstrap.Modal('#historyModal').show();
-        const res = await fetch(`${scriptURL}?action=history`);
-        const data = await res.json();
+        const btn = document.getElementById('loadMoreBtn');
         
-        content.innerHTML = `
-            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
-                <thead class="table-light">
-                    <tr><th>User</th><th>Purpose/Endorsement</th><th>Status</th><th>Driver</th><th>Distance</th></tr>
-                </thead>
-                <tbody>
-                    ${data.map(h => {
-                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
-                        return `
-                        <tr>
-                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small><br><small class="fw-bold text-primary">${forceCleanDate(h.time)}</small></td>
-                            <td><div class="fw-bold">${h.purpose}</div><div class="text-danger small">${h.endorsement || ''}</div></td>
-                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
-                            <td>${h.driver||'--'}</td>
-                            <td><strong>${dist} km</strong></td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>`;
+        if (!isLoadMore) {
+            currentOffset = 0;
+            content.innerHTML = '<tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-dark"></div></td></tr>';
+            new bootstrap.Modal('#historyModal').show();
+        } else {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+            btn.disabled = true;
+        }
+
+        try {
+            const res = await fetch(`${scriptURL}?action=history&start=${currentOffset}`);
+            const data = await res.json();
+            
+            if (!isLoadMore) content.innerHTML = ""; 
+            
+            if (data.length === 0) {
+                if (isLoadMore) alert("No more records found.");
+                btn.style.display = "none";
+                return;
+            }
+
+            const rowsHtml = data.map(h => {
+                const dist = (h.endOdo && h.startOdo) ? (Number(h.endOdo) - Number(h.startOdo)) : '---';
+                return `
+                    <tr class="history-row">
+                        <td>
+                            <strong>${h.name}</strong><br>
+                            <small class="text-muted">${h.dept}</small><br>
+                            <small class="fw-bold text-primary">${forceCleanDate(h.time)}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-wrap" style="max-width:250px">${h.purpose}</div>
+                            <div class="text-danger small">${h.endorsement || ''}</div>
+                        </td>
+                        <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
+                        <td>
+                            <div class="small"><strong>Driver:</strong> ${h.driver||'--'}</div>
+                            <div class="small"><strong>Vehicle:</strong> ${h.vehicle||'--'}</div>
+                        </td>
+                        <td><strong>${dist} km</strong></td>
+                    </tr>`;
+            }).join('');
+
+            content.insertAdjacentHTML('beforeend', rowsHtml);
+            currentOffset += data.length;
+            
+            btn.innerHTML = 'VIEW MORE RECORDS';
+            btn.disabled = false;
+            btn.style.display = data.length < 30 ? "none" : "inline-block";
+
+        } catch (e) {
+            content.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history.</td></tr>';
+        }
+    }
+
+    function filterHistory() {
+        const input = document.getElementById('historySearch').value.toLowerCase();
+        const rows = document.getElementsByClassName('history-row');
+        Array.from(rows).forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(input) ? "" : "none";
+        });
     }
 </script>
 </body>
