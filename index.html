@@ -6,10 +6,9 @@
     <title>TDMH Admin Console</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .btn-animate { transition: all 0.2s; cursor: pointer; }
         .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
         .status-pill { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
@@ -17,14 +16,14 @@
         .status-approved { background: #d1e7dd; color: #0f5132; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         #adminPanel { display: none; }
-        .stats-card { background: white; border-left: 5px solid #0d6efd; }
+        .endorse-box { background: #fdf2f2; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
+        /* Fix for sticky header background */
         .sticky-top { background-color: #f8f9fa !important; z-index: 1020; }
-        .chart-container { position: relative; height: 250px; width: 100%; }
     </style>
 </head>
 <body>
 
-<div class="container py-4" style="max-width: 1100px;">
+<div class="container py-4" style="max-width: 900px;">
     <div id="loginSection" class="card p-4 mx-auto text-center shadow-lg" style="max-width: 400px; margin-top: 100px;">
         <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
         <h4 class="fw-bold">Admin Portal</h4>
@@ -37,35 +36,12 @@
 
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark"><i class="bi bi-speedometer2"></i> Admin Dashboard</h3>
+            <h3 class="fw-bold text-dark"><i class="bi bi-bus-front"></i> Travel Queue</h3>
             <div>
                 <button class="btn btn-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="syncAll()"><i class="bi bi-arrow-clockwise"></i> Sync Data</button>
+                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
             </div>
         </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-8">
-                <div class="card p-3 h-100">
-                    <h6 class="fw-bold text-muted mb-3"><i class="bi bi-bar-chart"></i> Vehicle Usage Frequency</h6>
-                    <div class="chart-container">
-                        <canvas id="vehicleChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card p-3 mb-3 stats-card">
-                    <small class="text-muted fw-bold">TOTAL PATIENT TRIPS</small>
-                    <h2 id="patientCount" class="fw-bold mb-0">0</h2>
-                </div>
-                <div class="card p-3 stats-card" style="border-left-color: #198754;">
-                    <small class="text-muted fw-bold">TOP PURPOSE</small>
-                    <h6 id="topPurpose" class="fw-bold mb-0 text-truncate">Loading...</h6>
-                </div>
-            </div>
-        </div>
-
-        <h5 class="fw-bold mb-3 mt-5"><i class="bi bi-bus-front"></i> Active Travel Queue</h5>
         <div id="queueList"></div>
     </div>
 </div>
@@ -78,7 +54,7 @@
                     <h5 class="fw-bold mb-0 me-auto">Activity Log</h5>
                     <div class="input-group input-group-sm w-50 me-3">
                         <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                        <input type="text" id="historySearch" class="form-control border-0 bg-light" placeholder="Search by name, dept, or 'Patient'..." onkeyup="filterHistory()">
+                        <input type="text" id="historySearch" class="form-control border-0 bg-light" placeholder="Search by name or dept..." onkeyup="filterHistory()">
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -88,7 +64,7 @@
                     <table class="table table-hover mb-0" id="historyTable" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th>User / Classification</th>
+                                <th>User</th>
                                 <th>Purpose/Endorsement</th>
                                 <th>Status</th>
                                 <th>Assignment</th>
@@ -113,7 +89,16 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
     let currentOffset = 0;
-    let vehicleChartInstance = null;
+
+    function forceCleanDate(raw) {
+        if (!raw || raw === "N/A") return "N/A";
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
+        return d.toLocaleString('en-US', { 
+            month: '2-digit', day: '2-digit', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        });
+    }
 
     function togglePass() {
         const input = document.getElementById('passInput');
@@ -126,71 +111,11 @@
         if(document.getElementById('passInput').value === ADMIN_PASS) {
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
-            syncAll();
+            fetchPending();
         } else { alert("Incorrect Password"); }
     }
 
-    function syncAll() {
-        fetchPending();
-        updateAnalytics();
-    }
-
-    // NEW: Dashboard Analytics
-    async function updateAnalytics() {
-        const res = await fetch(`${scriptURL}?action=history&start=0&limit=100`);
-        const data = await res.json();
-        
-        const vehicleCounts = {};
-        const purposeCounts = {};
-        let patients = 0;
-
-        data.forEach(h => {
-            // Count Vehicles
-            if (h.vehicle && h.vehicle !== "TBA") {
-                vehicleCounts[h.vehicle] = (vehicleCounts[h.vehicle] || 0) + 1;
-            }
-            // Count Purposes
-            if (h.purpose) {
-                purposeCounts[h.purpose] = (purposeCounts[h.purpose] || 0) + 1;
-            }
-            // Identify Patients (Checking purpose or explicit name classification)
-            if (h.purpose.toLowerCase().includes('patient') || (h.patientName && h.patientName !== "")) {
-                patients++;
-            }
-        });
-
-        // Update Stats Cards
-        document.getElementById('patientCount').innerText = patients;
-        const sortedPurposes = Object.entries(purposeCounts).sort((a,b) => b[1] - a[1]);
-        document.getElementById('topPurpose').innerText = sortedPurposes[0] ? sortedPurposes[0][0] : "None";
-
-        // Render Graph
-        renderVehicleChart(vehicleCounts);
-    }
-
-    function renderVehicleChart(counts) {
-        const ctx = document.getElementById('vehicleChart').getContext('2d');
-        if (vehicleChartInstance) vehicleChartInstance.destroy();
-        
-        vehicleChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(counts),
-                datasets: [{
-                    label: 'Trips per Vehicle',
-                    data: Object.values(counts),
-                    backgroundColor: '#0d6efd',
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
-            }
-        });
-    }
-
+    // MAIN QUEUE LOGIC (KEEP UNCHANGED)
     async function fetchPending() {
         const list = document.getElementById('queueList');
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
@@ -200,24 +125,21 @@
 
         data.forEach(req => {
             const isApp = req.status === "Approved";
-            const isPatient = (req.patientName && req.patientName !== "");
-            
+            const timeDisplay = forceCleanDate(req.time);
+
             list.innerHTML += `
                 <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h5 class="fw-bold text-primary mb-1">
-                                ${req.name} 
-                                ${isPatient ? '<span class="badge bg-info text-dark ms-2" style="font-size:0.6rem">PATIENT USE</span>' : ''}
-                            </h5>
-                            <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${forceCleanDate(req.time)}</div>
+                            <h5 class="fw-bold text-primary mb-1">${req.name} <small class="text-muted fw-normal">(${req.dept})</small></h5>
+                            <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${timeDisplay}</div>
                         </div>
                         <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                     </div>
+
                     <div class="bg-white border rounded p-3 my-3">
                         <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
-                        <div class="fw-bold text-dark mb-1">${req.purpose}</div>
-                        ${isPatient ? `<div class="small text-primary">Patient: <strong>${req.patientName}</strong> (Room ${req.roomNumber})</div>` : ''}
+                        <div class="fw-bold text-dark mb-2">${req.purpose}</div>
                         ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
                     </div>
 
@@ -243,63 +165,93 @@
         });
     }
 
-    async function showHistory(isLoadMore = false) {
-        const content = document.getElementById('historyContent');
-        const btn = document.getElementById('loadMoreBtn');
-        if (!isLoadMore) { currentOffset = 0; content.innerHTML = ''; new bootstrap.Modal('#historyModal').show(); }
-        
-        const res = await fetch(`${scriptURL}?action=history&start=${currentOffset}`);
-        const data = await res.json();
-        
-        data.forEach(h => {
-            const isPatient = (h.patientName && h.patientName !== "");
-            const dist = (h.endOdo && h.startOdo) ? (Number(h.endOdo) - Number(h.startOdo)) : '---';
-            
-            content.innerHTML += `
-                <tr class="history-row ${isPatient ? 'table-info' : ''}">
-                    <td>
-                        <strong>${h.name}</strong><br>
-                        <small class="text-muted">${h.dept}</small><br>
-                        ${isPatient ? '<span class="badge bg-dark" style="font-size:0.6rem">PATIENT</span>' : ''}
-                    </td>
-                    <td>
-                        <div class="fw-bold">${h.purpose}</div>
-                        ${isPatient ? `<div class="small text-muted">Ref: ${h.patientName}</div>` : ''}
-                    </td>
-                    <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
-                    <td><small><strong>Dr:</strong> ${h.driver||'--'}<br><strong>Vh:</strong> ${h.vehicle||'--'}</small></td>
-                    <td><strong>${dist} km</strong></td>
-                </tr>`;
-        });
-        currentOffset += data.length;
-    }
-
-    // (Keeping helper functions forceCleanDate, filterHistory, process, complete from previous version)
-    function forceCleanDate(raw) {
-        if (!raw || raw === "N/A") return "N/A";
-        const d = new Date(raw);
-        if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
-        return d.toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-    }
-
     function process(name, status) {
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
-            const dr = document.getElementById(`dr_${req.name}`).value, vh = document.getElementById(`vh_${req.name}`).value, odo = document.getElementById(`odoS_${req.name}`).value;
+            const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
+            if(!dr || !vh || !odo) return alert("Fill all details");
             p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
+        } else {
+            const re = document.getElementById(`re_${name}`).value;
+            if(!re) return alert("Fill reason");
+            p.append('reason', re);
         }
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => syncAll());
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
     }
 
     function complete(name) {
         const odo = document.getElementById(`odoE_${name}`).value;
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => syncAll());
+        if(!odo) return alert("Enter End Odometer");
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
+    }
+
+    // UPDATED HISTORY LOGIC WITH VEHICLE & PAGINATION
+    async function showHistory(isLoadMore = false) {
+        const content = document.getElementById('historyContent');
+        const btn = document.getElementById('loadMoreBtn');
+        
+        if (!isLoadMore) {
+            currentOffset = 0;
+            content.innerHTML = '<tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-dark"></div></td></tr>';
+            new bootstrap.Modal('#historyModal').show();
+        } else {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+            btn.disabled = true;
+        }
+
+        try {
+            const res = await fetch(`${scriptURL}?action=history&start=${currentOffset}`);
+            const data = await res.json();
+            
+            if (!isLoadMore) content.innerHTML = ""; 
+            
+            if (data.length === 0) {
+                if (isLoadMore) alert("No more records found.");
+                btn.style.display = "none";
+                return;
+            }
+
+            const rowsHtml = data.map(h => {
+                const dist = (h.endOdo && h.startOdo) ? (Number(h.endOdo) - Number(h.startOdo)) : '---';
+                return `
+                    <tr class="history-row">
+                        <td>
+                            <strong>${h.name}</strong><br>
+                            <small class="text-muted">${h.dept}</small><br>
+                            <small class="fw-bold text-primary">${forceCleanDate(h.time)}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-wrap" style="max-width:250px">${h.purpose}</div>
+                            <div class="text-danger small">${h.endorsement || ''}</div>
+                        </td>
+                        <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
+                        <td>
+                            <div class="small"><strong>Driver:</strong> ${h.driver||'--'}</div>
+                            <div class="small"><strong>Vehicle:</strong> ${h.vehicle||'--'}</div>
+                        </td>
+                        <td><strong>${dist} km</strong></td>
+                    </tr>`;
+            }).join('');
+
+            content.insertAdjacentHTML('beforeend', rowsHtml);
+            currentOffset += data.length;
+            
+            btn.innerHTML = 'VIEW MORE RECORDS';
+            btn.disabled = false;
+            btn.style.display = data.length < 30 ? "none" : "inline-block";
+
+        } catch (e) {
+            content.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history.</td></tr>';
+        }
     }
 
     function filterHistory() {
         const input = document.getElementById('historySearch').value.toLowerCase();
         const rows = document.getElementsByClassName('history-row');
-        Array.from(rows).forEach(row => { row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none"; });
+        Array.from(rows).forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(input) ? "" : "none";
+        });
     }
 </script>
 </body>
