@@ -98,7 +98,7 @@
                     ${!isApp ? `
                         <div class="row g-2">
                             <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
-                            <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Plate #"></div>
+                            <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Vehicle"></div>
                             <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
                             <div class="col-md-3"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
                         </div>` : `
@@ -141,3 +141,4 @@
 </script>
 </body>
 </html>
+
