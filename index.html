@@ -9,18 +9,14 @@
     <style>
         body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
         .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .btn-animate { transition: all 0.2s; cursor: pointer; border-radius: 8px; }
+        .btn-animate { transition: all 0.2s; cursor: pointer; }
         .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
-        .btn-animate:active { transform: scale(0.95); }
         .status-pill { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
         .status-pending { background: #fff3cd; color: #856404; animation: pulse 2s infinite; }
         .status-approved { background: #d1e7dd; color: #0f5132; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         #adminPanel { display: none; }
-        .endorse-box { background: #fff5f5; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
-        .search-box { border-radius: 20px; padding-left: 40px; }
-        .search-container { position: relative; }
-        .search-container i { position: absolute; left: 15px; top: 10px; color: #aaa; }
+        .endorse-box { background: #fdf2f2; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -51,31 +47,26 @@
 <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 rounded-4 shadow-lg">
-            <div class="modal-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+            <div class="modal-header bg-dark text-white rounded-top-4">
                 <h5 class="fw-bold mb-0">Monthly Activity Log</h5>
-                <div class="search-container" style="width: 300px;">
-                    <i class="bi bi-search"></i>
-                    <input type="text" id="historySearch" class="form-control form-control-sm search-box" placeholder="Search Name or Month..." onkeyup="filterHistory()">
-                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0" id="historyContent" style="max-height: 70vh; overflow-y: auto;">
-                </div>
+            <div class="modal-body p-0" id="historyContent"></div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
-    let fullHistoryData = [];
 
     // BROWSER-SIDE DATE CLEANER (Forced 12-hour format)
     function forceCleanDate(raw) {
         if (!raw || raw === "N/A") return "N/A";
         const d = new Date(raw);
         if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
+        
         return d.toLocaleString('en-US', { 
             month: '2-digit', day: '2-digit', year: 'numeric', 
             hour: '2-digit', minute: '2-digit', hour12: true 
@@ -117,11 +108,13 @@
                         </div>
                         <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                     </div>
+
                     <div class="bg-white border rounded p-3 my-3">
                         <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
                         <div class="fw-bold text-dark mb-2">${req.purpose}</div>
                         ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
                     </div>
+
                     ${!isApp ? `
                         <div class="row g-2">
                             <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
@@ -144,46 +137,6 @@
         });
     }
 
-    async function showHistory() {
-        const content = document.getElementById('historyContent');
-        content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
-        new bootstrap.Modal('#historyModal').show();
-        const res = await fetch(`${scriptURL}?action=history`);
-        fullHistoryData = await res.json();
-        renderHistoryTable(fullHistoryData);
-    }
-
-    function renderHistoryTable(data) {
-        const content = document.getElementById('historyContent');
-        content.innerHTML = `
-            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
-                <thead class="table-light sticky-top">
-                    <tr><th>User/Date</th><th>Purpose/Endorsement</th><th>Status</th><th>Log Details</th></tr>
-                </thead>
-                <tbody id="historyTableBody">
-                    ${data.map(h => {
-                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
-                        return `
-                        <tr>
-                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small><br><span class="text-primary fw-bold">${forceCleanDate(h.time)}</span></td>
-                            <td><div class="fw-bold">${h.purpose}</div><div class="text-danger small">${h.endorsement || ''}</div></td>
-                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
-                            <td><small>Driver: ${h.driver||'--'}</small><br><small>Distance: <strong>${dist} km</strong></small></td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>`;
-    }
-
-    function filterHistory() {
-        const query = document.getElementById('historySearch').value.toLowerCase();
-        const filtered = fullHistoryData.filter(h => 
-            h.name.toLowerCase().includes(query) || 
-            forceCleanDate(h.time).toLowerCase().includes(query)
-        );
-        renderHistoryTable(filtered);
-    }
-
     function process(name, status) {
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
@@ -202,6 +155,34 @@
         const odo = document.getElementById(`odoE_${name}`).value;
         if(!odo) return alert("Enter End Odometer");
         fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
+    }
+
+    async function showHistory() {
+        const content = document.getElementById('historyContent');
+        content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
+        new bootstrap.Modal('#historyModal').show();
+        const res = await fetch(`${scriptURL}?action=history`);
+        const data = await res.json();
+        
+        content.innerHTML = `
+            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr><th>User</th><th>Purpose/Endorsement</th><th>Status</th><th>Driver</th><th>Distance</th></tr>
+                </thead>
+                <tbody>
+                    ${data.map(h => {
+                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
+                        return `
+                        <tr>
+                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small><br><small class="fw-bold text-primary">${forceCleanDate(h.time)}</small></td>
+                            <td><div class="fw-bold">${h.purpose}</div><div class="text-danger small">${h.endorsement || ''}</div></td>
+                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
+                            <td>${h.driver||'--'}</td>
+                            <td><strong>${dist} km</strong></td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
     }
 </script>
 </body>
