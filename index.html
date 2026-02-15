@@ -3,42 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDMH Admin Console</title>
+    <title>TDMH Admin | Travel Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.2s; }
-        .btn-animate { transition: all 0.3s; cursor: pointer; }
-        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .btn-animate:active { transform: translateY(0); }
-        .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .status-pending { background: #ffc107; animation: blink 1s infinite; }
-        .status-approved { background: #198754; }
-        @keyframes blink { 50% { opacity: 0.3; } }
+        body { background: #f4f7f6; font-family: 'Inter', sans-serif; color: #333; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .btn-animate { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        .status-pending { background: #fff3cd; color: #856404; animation: blinker 1.5s linear infinite; }
+        .status-approved { background: #d1e7dd; color: #0f5132; }
+        @keyframes blinker { 50% { opacity: 0.6; } }
         #adminPanel { display: none; }
-        .endorse-text { color: #d63384; font-weight: bold; border-left: 3px solid #d63384; padding-left: 8px; }
+        .endorse-box { background: #fce4ec; border-left: 4px solid #f06292; padding: 10px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="container py-4" style="max-width: 850px;">
-    <div id="loginSection" class="card p-4 text-center mx-auto" style="max-width: 400px;">
-        <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
-        <h4 class="fw-bold">Admin Login</h4>
+<div class="container py-4">
+    <div id="loginSection" class="card p-4 text-center mx-auto shadow-lg" style="max-width: 400px; margin-top: 100px;">
+        <i class="bi bi-person-badge text-primary display-4 mb-3"></i>
+        <h4 class="fw-bold">Admin Portal</h4>
         <div class="input-group my-3">
-            <input type="password" id="passInput" class="form-control" placeholder="Enter Password">
-            <button class="btn btn-outline-secondary shadow-none" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
+            <input type="password" id="passInput" class="form-control" placeholder="Management Password">
+            <button class="btn btn-outline-secondary" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
         </div>
-        <button class="btn btn-primary w-100 fw-bold btn-animate rounded-pill" onclick="checkPass()">ACCESS CONSOLE</button>
+        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">LOGIN</button>
     </div>
 
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark mb-0">Travel Management Queue</h3>
+            <h3 class="fw-bold mb-0">Active Travel Queue</h3>
             <div>
-                <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-calendar3"></i> Monthly History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
+                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
             </div>
         </div>
         <div id="queueList"></div>
@@ -48,9 +47,9 @@
 <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 rounded-4">
-            <div class="modal-header bg-dark text-white rounded-top-4">
-                <h5 class="modal-title fw-bold">Travel Logs (Monthly)</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="fw-bold">Monthly Travel History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0" id="historyContent"></div>
         </div>
@@ -74,54 +73,52 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-        } else { alert("Incorrect Password"); }
+        } else { alert("Access Denied"); }
     }
 
     async function fetchPending() {
         const list = document.getElementById('queueList');
-        list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Syncing Live Data...</p></div>';
+        list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
         const res = await fetch(`${scriptURL}?action=getPending`);
         const data = await res.json();
-        list.innerHTML = data.length ? "" : '<div class="card p-5 text-center text-muted">All clear! No active travel requests.</div>';
+        list.innerHTML = data.length ? "" : '<div class="alert alert-secondary text-center p-5">Queue is empty.</div>';
 
         data.forEach(req => {
             const isApp = req.status === "Approved";
             list.innerHTML += `
-                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning'}">
-                    <div class="d-flex justify-content-between">
-                        <h5 class="fw-bold text-primary mb-1">${req.name} <span class="text-muted fw-normal fs-6">(${req.dept})</span></h5>
-                        <small class="text-muted"><i class="bi bi-calendar-event"></i> ${req.time}</small>
+                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="fw-bold text-primary mb-0">${req.name}</h5>
+                            <p class="text-muted small mb-0">${req.dept} | <i class="bi bi-clock"></i> ${req.time}</p>
+                        </div>
+                        <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                     </div>
-                    <div class="mb-2">
-                        <span class="status-indicator ${isApp ? 'status-approved' : 'status-pending'}"></span>
-                        <span class="small fw-bold text-uppercase">${req.status}</span>
-                    </div>
-                    
-                    <div class="bg-white border rounded p-3 my-3">
-                        <div class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.7rem;">Purpose of Travel</div>
-                        <div class="fw-bold text-dark mb-2">${req.purpose}</div>
-                        ${req.endorsement && req.endorsement !== 'None' ? `
-                            <div class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.7rem;">Special Endorsement</div>
-                            <div class="endorse-text small">${req.endorsement}</div>
-                        ` : ''}
+
+                    <div class="bg-light p-3 rounded mb-3">
+                        <div class="small fw-bold text-muted mb-1 text-uppercase">Purpose</div>
+                        <div class="fw-bold mb-2">${req.purpose}</div>
+                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box small">Endorsement: ${req.endorsement}</div>` : ''}
                     </div>
 
                     ${!isApp ? `
                         <div class="row g-2">
-                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
-                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Plate #"></div>
-                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
-                            <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                            <div class="col-6"><div class="input-group">
-                                <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
-                                <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
-                            </div></div>
+                            <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Assign Driver"></div>
+                            <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Vehicle Plate"></div>
+                            <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
+                            <div class="col-md-3"><button class="btn btn-success btn-sm w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
+                            <div class="col-12 mt-2">
+                                <div class="input-group">
+                                    <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Deny Reason">
+                                    <button class="btn btn-danger btn-sm px-4 btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                                </div>
+                            </div>
                         </div>
                     ` : `
-                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
-                            <div class="col-md-5"><strong>Current Trip:</strong> ${req.driver} | <strong>Odo Start:</strong> ${req.startOdo}</div>
-                            <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
-                            <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
+                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
+                            <div class="col-md-6 small"><strong>Assigned:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
+                            <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
+                            <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
                         </div>
                     `}
                 </div>`;
@@ -132,11 +129,11 @@
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
             const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
-            if(!dr || !vh || !odo) return alert("All fields are required for Approval.");
+            if(!dr || !vh || !odo) return alert("Fill all fields for approval");
             p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
         } else {
             const re = document.getElementById(`re_${name}`).value;
-            if(!re) return alert("Provide a reason for denial.");
+            if(!re) return alert("Provide a reason");
             p.append('reason', re);
         }
         submit(p);
@@ -144,7 +141,7 @@
 
     function complete(name) {
         const odo = document.getElementById(`odoE_${name}`).value;
-        if(!odo) return alert("Input End Odometer reading.");
+        if(!odo) return alert("Enter End Odometer");
         submit(new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }));
     }
 
@@ -158,25 +155,22 @@
         const content = document.getElementById('historyContent');
         content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
         new bootstrap.Modal('#historyModal').show();
-        
         const res = await fetch(`${scriptURL}?action=history`);
         const data = await res.json();
         
         content.innerHTML = `
             <table class="table table-hover mb-0" style="font-size: 0.85rem;">
                 <thead class="table-light">
-                    <tr>
-                        <th>Name</th><th>Purpose/Endorsement</th><th>Status</th><th>Driver</th><th>Distance</th>
-                    </tr>
+                    <tr><th>Name/Dept</th><th>Purpose</th><th>Status</th><th>Driver</th><th>Distance</th></tr>
                 </thead>
                 <tbody>
                     ${data.map(h => {
                         const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
                         return `
                         <tr>
-                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small></td>
-                            <td><div class="small">P: ${h.purpose}</div><div class="text-pink small">${h.endorsement || ''}</div></td>
-                            <td><span class="badge ${h.status==='Completed'?'bg-primary':h.status==='Denied'?'bg-danger':'bg-secondary'}">${h.status}</span></td>
+                            <td><strong>${h.name}</strong><br><small>${h.dept}</small></td>
+                            <td><div class="fw-bold">${h.purpose}</div><small class="text-danger">${h.endorsement || ''}</small></td>
+                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
                             <td>${h.driver||'--'}</td>
                             <td><strong>${dist} km</strong></td>
                         </tr>`;
