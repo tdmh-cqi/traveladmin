@@ -9,52 +9,50 @@
     <style>
         body { background: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.2s; }
-        .btn-animate { transition: all 0.3s; }
+        .btn-animate { transition: all 0.3s; cursor: pointer; }
         .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         .btn-animate:active { transform: translateY(0); }
-        
         .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .status-pending { background: #ffc107; animation: blink 1s infinite; }
         .status-approved { background: #198754; }
-        
         @keyframes blink { 50% { opacity: 0.3; } }
         #adminPanel { display: none; }
+        .endorse-text { color: #d63384; font-weight: bold; border-left: 3px solid #d63384; padding-left: 8px; }
     </style>
 </head>
 <body>
 
-<div class="container py-4" style="max-width: 800px;">
+<div class="container py-4" style="max-width: 850px;">
     <div id="loginSection" class="card p-4 text-center mx-auto" style="max-width: 400px;">
-        <i class="bi bi-lock-fill text-primary display-4 mb-3"></i>
+        <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
         <h4 class="fw-bold">Admin Login</h4>
         <div class="input-group my-3">
-            <input type="password" id="passInput" class="form-control" placeholder="Password">
-            <button class="btn btn-outline-secondary" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
+            <input type="password" id="passInput" class="form-control" placeholder="Enter Password">
+            <button class="btn btn-outline-secondary shadow-none" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
         </div>
-        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">ENTER CONSOLE</button>
+        <button class="btn btn-primary w-100 fw-bold btn-animate rounded-pill" onclick="checkPass()">ACCESS CONSOLE</button>
     </div>
 
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark">Travel Management</h3>
+            <h3 class="fw-bold text-dark mb-0">Travel Management Queue</h3>
             <div>
-                <button class="btn btn-outline-secondary btn-sm rounded-pill btn-animate me-2" onclick="showHistory()"><i class="bi bi-clock-history"></i> Monthly History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
+                <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-calendar3"></i> Monthly History</button>
+                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
         </div>
-
         <div id="queueList"></div>
     </div>
 </div>
 
 <div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="fw-bold">Monthly History (Current Month)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">Travel Logs (Monthly)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="historyContent"></div>
+            <div class="modal-body p-0" id="historyContent"></div>
         </div>
     </div>
 </div>
@@ -76,45 +74,54 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-        } else { alert("Wrong Password"); }
+        } else { alert("Incorrect Password"); }
     }
 
     async function fetchPending() {
         const list = document.getElementById('queueList');
-        list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+        list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Syncing Live Data...</p></div>';
         const res = await fetch(`${scriptURL}?action=getPending`);
         const data = await res.json();
-        list.innerHTML = data.length ? "" : '<p class="text-center text-muted mt-5">Queue is clear!</p>';
+        list.innerHTML = data.length ? "" : '<div class="card p-5 text-center text-muted">All clear! No active travel requests.</div>';
 
         data.forEach(req => {
             const isApp = req.status === "Approved";
             list.innerHTML += `
-                <div class="card p-3 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning'}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="fw-bold mb-0">${req.name} <small class="text-muted fw-normal">(${req.dept})</small></h6>
-                            <div class="small mt-1"><span class="status-indicator ${isApp ? 'status-approved' : 'status-pending'}"></span>${req.status}</div>
-                        </div>
-                        <small class="text-muted">${req.time}</small>
+                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning'}">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="fw-bold text-primary mb-1">${req.name} <span class="text-muted fw-normal fs-6">(${req.dept})</span></h5>
+                        <small class="text-muted"><i class="bi bi-calendar-event"></i> ${req.time}</small>
                     </div>
-                    <div class="bg-light p-2 rounded my-2 small">${req.purpose}</div>
+                    <div class="mb-2">
+                        <span class="status-indicator ${isApp ? 'status-approved' : 'status-pending'}"></span>
+                        <span class="small fw-bold text-uppercase">${req.status}</span>
+                    </div>
                     
+                    <div class="bg-white border rounded p-3 my-3">
+                        <div class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.7rem;">Purpose of Travel</div>
+                        <div class="fw-bold text-dark mb-2">${req.purpose}</div>
+                        ${req.endorsement && req.endorsement !== 'None' ? `
+                            <div class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.7rem;">Special Endorsement</div>
+                            <div class="endorse-text small">${req.endorsement}</div>
+                        ` : ''}
+                    </div>
+
                     ${!isApp ? `
                         <div class="row g-2">
-                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
-                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Plate #"></div>
-                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
-                            <div class="col-6"><button class="btn btn-success btn-sm w-100 btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
+                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
+                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Plate #"></div>
+                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
+                            <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
                             <div class="col-6"><div class="input-group">
-                                <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Reason">
-                                <button class="btn btn-danger btn-sm btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                                <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
+                                <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
                             </div></div>
                         </div>
                     ` : `
-                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
-                            <div class="col-md-5 small"><strong>Driver:</strong> ${req.driver} | <strong>Start:</strong> ${req.startOdo}</div>
-                            <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
-                            <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 btn-animate" onclick="complete('${req.name}')">FINISH</button></div>
+                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
+                            <div class="col-md-5"><strong>Current Trip:</strong> ${req.driver} | <strong>Odo Start:</strong> ${req.startOdo}</div>
+                            <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
+                            <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
                         </div>
                     `}
                 </div>`;
@@ -125,11 +132,11 @@
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
             const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
-            if(!dr || !vh || !odo) return alert("Fill all fields");
+            if(!dr || !vh || !odo) return alert("All fields are required for Approval.");
             p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
         } else {
             const re = document.getElementById(`re_${name}`).value;
-            if(!re) return alert("Fill reason");
+            if(!re) return alert("Provide a reason for denial.");
             p.append('reason', re);
         }
         submit(p);
@@ -137,29 +144,45 @@
 
     function complete(name) {
         const odo = document.getElementById(`odoE_${name}`).value;
-        if(!odo) return alert("Enter end Odometer");
+        if(!odo) return alert("Input End Odometer reading.");
         submit(new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }));
     }
 
     function submit(params) {
         fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: params }).then(() => {
-            alert("Success!"); fetchPending();
+            fetchPending();
         });
     }
 
     async function showHistory() {
         const content = document.getElementById('historyContent');
-        content.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-secondary"></div></div>';
+        content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
         new bootstrap.Modal('#historyModal').show();
         
         const res = await fetch(`${scriptURL}?action=history`);
         const data = await res.json();
-        content.innerHTML = '<div class="table-responsive"><table class="table table-sm small"><thead><tr><th>Name</th><th>Status</th><th>Driver</th><th>Distance</th></tr></thead><tbody id="histBody"></tbody></table></div>';
         
-        data.forEach(h => {
-            const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
-            document.getElementById('histBody').innerHTML += `<tr><td>${h.name}</td><td><span class="badge ${h.status==='Completed'?'bg-primary':h.status==='Denied'?'bg-danger':'bg-secondary'}">${h.status}</span></td><td>${h.driver||'N/A'}</td><td>${dist} km</td></tr>`;
-        });
+        content.innerHTML = `
+            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th><th>Purpose/Endorsement</th><th>Status</th><th>Driver</th><th>Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(h => {
+                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
+                        return `
+                        <tr>
+                            <td><strong>${h.name}</strong><br><small class="text-muted">${h.dept}</small></td>
+                            <td><div class="small">P: ${h.purpose}</div><div class="text-pink small">${h.endorsement || ''}</div></td>
+                            <td><span class="badge ${h.status==='Completed'?'bg-primary':h.status==='Denied'?'bg-danger':'bg-secondary'}">${h.status}</span></td>
+                            <td>${h.driver||'--'}</td>
+                            <td><strong>${dist} km</strong></td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
     }
 </script>
 </body>
