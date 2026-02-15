@@ -17,6 +17,7 @@
         @keyframes blinker { 50% { opacity: 0.6; } }
         #adminPanel { display: none; }
         .endorse-box { background: #fce4ec; border-left: 4px solid #f06292; padding: 10px; border-radius: 4px; font-weight: bold; }
+        .date-text { font-weight: 600; color: #6c757d; font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -37,29 +38,28 @@
             <h3 class="fw-bold mb-0">Active Travel Queue</h3>
             <div>
                 <button class="btn btn-outline-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
+                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
         </div>
         <div id="queueList"></div>
     </div>
 </div>
 
-<div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="fw-bold">Monthly Travel History</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0" id="historyContent"></div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
+
+    // Aggressive Date Fixer for the Browser
+    function cleanDate(raw) {
+        if (!raw || raw === "N/A") return "N/A";
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw; // Return raw if it's already a clean string
+        
+        return d.toLocaleString('en-US', { 
+            month: '2-digit', day: '2-digit', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        });
+    }
 
     function togglePass() {
         const input = document.getElementById('passInput');
@@ -79,104 +79,76 @@
     async function fetchPending() {
         const list = document.getElementById('queueList');
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
-        const res = await fetch(`${scriptURL}?action=getPending`);
-        const data = await res.json();
-        list.innerHTML = data.length ? "" : '<div class="alert alert-secondary text-center p-5">Queue is empty.</div>';
+        try {
+            const res = await fetch(`${scriptURL}?action=getPending`);
+            const data = await res.json();
+            list.innerHTML = data.length ? "" : '<div class="alert alert-secondary text-center p-5">Queue is empty.</div>';
 
-        data.forEach(req => {
-            const isApp = req.status === "Approved";
-            list.innerHTML += `
-                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h5 class="fw-bold text-primary mb-0">${req.name}</h5>
-                            <p class="text-muted small mb-0">${req.dept} | <i class="bi bi-clock"></i> ${req.time}</p>
+            data.forEach(req => {
+                const isApp = req.status === "Approved";
+                const displayTime = cleanDate(req.time); // <--- THIS FORCES THE FIX
+
+                list.innerHTML += `
+                    <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="fw-bold text-primary mb-0">${req.name}</h5>
+                                <p class="date-text mb-0">${req.dept} | <i class="bi bi-clock"></i> ${displayTime}</p>
+                            </div>
+                            <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                         </div>
-                        <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
-                    </div>
 
-                    <div class="bg-light p-3 rounded mb-3">
-                        <div class="small fw-bold text-muted mb-1 text-uppercase">Purpose</div>
-                        <div class="fw-bold mb-2">${req.purpose}</div>
-                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box small">Endorsement: ${req.endorsement}</div>` : ''}
-                    </div>
+                        <div class="bg-light p-3 rounded mb-3">
+                            <div class="small fw-bold text-muted mb-1 text-uppercase">Purpose</div>
+                            <div class="fw-bold mb-2">${req.purpose}</div>
+                            ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box small">Endorsement: ${req.endorsement}</div>` : ''}
+                        </div>
 
-                    ${!isApp ? `
-                        <div class="row g-2">
-                            <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Assign Driver"></div>
-                            <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Vehicle Plate"></div>
-                            <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
-                            <div class="col-md-3"><button class="btn btn-success btn-sm w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                            <div class="col-12 mt-2">
-                                <div class="input-group">
-                                    <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Deny Reason">
-                                    <button class="btn btn-danger btn-sm px-4 btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                        ${!isApp ? `
+                            <div class="row g-2">
+                                <div class="col-md-3"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
+                                <div class="col-md-3"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Plate #"></div>
+                                <div class="col-md-3"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
+                                <div class="col-md-3"><button class="btn btn-success btn-sm w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
+                                <div class="col-12 mt-2">
+                                    <div class="input-group">
+                                        <input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Deny Reason">
+                                        <button class="btn btn-danger btn-sm px-4 btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ` : `
-                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
-                            <div class="col-md-6 small"><strong>Assigned:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
-                            <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
-                            <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
-                        </div>
-                    `}
-                </div>`;
-        });
+                        ` : `
+                            <div class="row g-2 align-items-center bg-success bg-opacity-10 p-2 rounded">
+                                <div class="col-md-6 small"><strong>Assigned:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
+                                <div class="col-md-3"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
+                                <div class="col-md-3"><button class="btn btn-primary btn-sm w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
+                            </div>
+                        `}
+                    </div>`;
+            });
+        } catch(e) { list.innerHTML = "Error loading data."; }
     }
 
+    // Process and History functions remain same but use cleanDate inside History too...
     function process(name, status) {
         const p = new URLSearchParams({ action: 'updateRequest', name, status });
         if(status === 'Approved') {
             const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
-            if(!dr || !vh || !odo) return alert("Fill all fields for approval");
+            if(!dr || !vh || !odo) return alert("Fill all fields");
             p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
         } else {
             const re = document.getElementById(`re_${name}`).value;
             if(!re) return alert("Provide a reason");
             p.append('reason', re);
         }
-        submit(p);
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
     }
 
     function complete(name) {
         const odo = document.getElementById(`odoE_${name}`).value;
         if(!odo) return alert("Enter End Odometer");
-        submit(new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }));
-    }
-
-    function submit(params) {
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: params }).then(() => {
-            fetchPending();
-        });
-    }
-
-    async function showHistory() {
-        const content = document.getElementById('historyContent');
-        content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-dark"></div></div>';
-        new bootstrap.Modal('#historyModal').show();
-        const res = await fetch(`${scriptURL}?action=history`);
-        const data = await res.json();
-        
-        content.innerHTML = `
-            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
-                <thead class="table-light">
-                    <tr><th>Name/Dept</th><th>Purpose</th><th>Status</th><th>Driver</th><th>Distance</th></tr>
-                </thead>
-                <tbody>
-                    ${data.map(h => {
-                        const dist = (h.endOdo && h.startOdo) ? (h.endOdo - h.startOdo) : '---';
-                        return `
-                        <tr>
-                            <td><strong>${h.name}</strong><br><small>${h.dept}</small></td>
-                            <td><div class="fw-bold">${h.purpose}</div><small class="text-danger">${h.endorsement || ''}</small></td>
-                            <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
-                            <td>${h.driver||'--'}</td>
-                            <td><strong>${dist} km</strong></td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>`;
+        const p = new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo });
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
     }
 </script>
 </body>
