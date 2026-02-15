@@ -3,101 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDMH Admin | Travel Management</title>
+    <title>TDMH Admin | Travel Console</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        :root {
-            --primary-blue: #0056b3;
-            --pending-gold: #fff9e6;
-            --pending-border: #ffc107;
-        }
-        body { background: #f0f2f5; color: #333; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        
-        .login-card { max-width: 400px; margin: 80px auto; border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        
-        .admin-card { 
-            background: #fff; border: none; border-radius: 16px; margin-bottom: 15px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03); border-left: 6px solid var(--pending-border);
-            animation: pulse-border 2s infinite;
-        }
-
-        @keyframes pulse-border {
-            0% { border-left-color: #ffc107; }
-            50% { border-left-color: #ffe082; }
-            100% { border-left-color: #ffc107; }
-        }
-
-        .badge-pending { 
-            background: var(--pending-gold); color: #856404; border: 1px solid #ffeeba;
-            animation: blinker 1.5s linear infinite;
-        }
-
-        @keyframes blinker { 50% { opacity: 0.5; } }
-
-        #adminPanel { display: none; }
-        .history-card { border-left: 6px solid #6c757d; animation: none; }
-        
+        body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
+        .admin-card { border-radius: 16px; border: none; transition: 0.3s; }
+        .border-pending { border-left: 6px solid #ffc107 !important; }
+        .border-approved { border-left: 6px solid #198754 !important; background: #f8fff9; }
         .stat-box { background: white; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .login-card { max-width: 400px; margin: 80px auto; border-radius: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container py-3">
-    <div id="loginSection" class="card login-card p-4 shadow-sm">
-        <div class="text-center mb-4">
-            <div class="bg-primary text-white d-inline-block p-3 rounded-circle mb-3">
-                <i class="bi bi-shield-lock fs-2"></i>
-            </div>
-            <h4 class="fw-bold">Admin Access</h4>
-        </div>
-        <div class="mb-3">
-            <label class="form-label small fw-bold">Management Password</label>
-            <div class="input-group shadow-sm">
-                <input type="password" id="passInput" class="form-control border-end-0" placeholder="Enter password">
-                <span class="input-group-text bg-white border-start-0" onclick="togglePass()" style="cursor: pointer;">
-                    <i class="bi bi-eye-fill text-muted" id="toggleIcon"></i>
-                </span>
-            </div>
-        </div>
-        <button class="btn btn-primary w-100 fw-bold py-2 rounded-pill" onclick="checkPass()">Login to Console</button>
+    <div id="loginSection" class="card login-card p-4 shadow-sm border-0">
+        <h4 class="fw-bold text-center mb-4">Admin Login</h4>
+        <input type="password" id="passInput" class="form-control mb-3" placeholder="Enter Password">
+        <button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="checkPass()">Login</button>
     </div>
 
-    <div id="adminPanel">
+    <div id="adminPanel" style="display:none;">
         <div class="row g-3 mb-4">
-            <div class="col-4">
-                <div class="stat-box border-bottom border-warning border-4">
-                    <div class="text-muted small fw-bold">PENDING</div>
-                    <h4 class="fw-bold mb-0" id="statPending">0</h4>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="stat-box border-bottom border-success border-4">
-                    <div class="text-muted small fw-bold">APPROVED</div>
-                    <h4 class="fw-bold mb-0 text-success" id="statApproved">0</h4>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="stat-box border-bottom border-danger border-4">
-                    <div class="text-muted small fw-bold">DENIED</div>
-                    <h4 class="fw-bold mb-0 text-danger" id="statDenied">0</h4>
-                </div>
-            </div>
+            <div class="col-6"><div class="stat-box"><h6>PENDING QUEUE</h6><h3 id="statPending" class="fw-bold text-warning">0</h3></div></div>
+            <div class="col-6"><div class="stat-box"><h6>ACTIVE TRIPS</h6><h3 id="statActive" class="fw-bold text-success">0</h3></div></div>
         </div>
 
-        <div class="card p-3 mb-4 shadow-sm border-0 rounded-4">
-            <div class="input-group">
-                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
-                <input type="text" id="histSearch" class="form-control border-0 shadow-none" placeholder="Search History by Name or Dept...">
-                <button class="btn btn-dark rounded-pill px-4" onclick="searchHistory()">Search</button>
-            </div>
+        <div class="input-group mb-4 shadow-sm">
+            <input type="text" id="histSearch" class="form-control border-0" placeholder="Search History (Name/Dept)">
+            <button class="btn btn-dark" onclick="searchHistory()">Search History</button>
         </div>
 
-        <div class="section-header d-flex justify-content-between align-items-end mb-4">
-            <h3 class="fw-bold mb-0 text-dark">Live Queue</h3>
-            <button class="btn btn-white shadow-sm btn-sm rounded-pill" onclick="fetchPending()">
-                <i class="bi bi-arrow-clockwise"></i> Sync
-            </button>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold m-0">Live Operational Queue</h4>
+            <button class="btn btn-sm btn-outline-secondary" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
         </div>
 
         <div id="pendingList"></div>
@@ -108,135 +48,103 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
 
-    function togglePass() {
-        const passInput = document.getElementById('passInput');
-        const icon = document.getElementById('toggleIcon');
-        passInput.type = passInput.type === "password" ? "text" : "password";
-        icon.classList.toggle("bi-eye-fill");
-        icon.classList.toggle("bi-eye-slash-fill");
-    }
-
     function checkPass() {
         if(document.getElementById('passInput').value === ADMIN_PASS) {
-            document.getElementById('loginSection').classList.add('d-none');
+            document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-            loadStats();
-        } else { alert("❌ Incorrect Password"); }
-    }
-
-    // Load Stats from the last 50 entries to get a summary
-    async function loadStats() {
-        try {
-            const res = await fetch(`${scriptURL}?action=recent`);
-            const data = await res.json();
-            let app = 0, den = 0;
-            data.forEach(item => {
-                if(item.status === 'Approved') app++;
-                if(item.status === 'Denied') den++;
-            });
-            document.getElementById('statApproved').innerText = app;
-            document.getElementById('statDenied').innerText = den;
-        } catch(e) {}
+        } else { alert("Wrong Password"); }
     }
 
     async function fetchPending() {
         const list = document.getElementById('pendingList');
-        list.innerHTML = `<div class="text-center mt-5"><div class="spinner-grow text-primary"></div></div>`;
+        list.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary"></div></div>';
         try {
             const res = await fetch(`${scriptURL}?action=getPending`);
             const data = await res.json();
-            document.getElementById('statPending').innerText = data.length;
-            list.innerHTML = data.length ? "" : `<div class="text-center mt-5 py-5 bg-white rounded-4">No pending requests.</div>`;
+            
+            let pCount = 0, aCount = 0;
+            list.innerHTML = data.length ? "" : '<div class="alert alert-light text-center">No active operations.</div>';
 
             data.forEach(req => {
+                const isApproved = req.status === "Approved";
+                isApproved ? aCount++ : pCount++;
+                
                 list.innerHTML += `
-                    <div class="card admin-card p-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <div><h5 class="fw-bold text-primary mb-0">${req.name}</h5><small class="text-muted fw-bold">${req.dept}</small></div>
-                            <small class="text-muted"><i class="bi bi-clock"></i> ${req.time}</small>
+                <div class="card admin-card p-4 mb-3 shadow-sm ${isApproved ? 'border-approved' : 'border-pending'}">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="fw-bold mb-0 text-primary">${req.name} <small class="text-muted fw-normal">(${req.dept})</small></h5>
+                        <span class="badge ${isApproved ? 'bg-success' : 'bg-warning text-dark'}">${req.status}</span>
+                    </div>
+                    <p class="small text-muted mb-3">${req.purpose} | ${req.time}</p>
+
+                    ${!isApproved ? `
+                        <div class="row g-2">
+                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
+                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Plate"></div>
+                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control form-control-sm" placeholder="Start Odo"></div>
+                            <div class="col-6"><button class="btn btn-success btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Approved')">APPROVE & START</button></div>
+                            <div class="col-6"><input type="text" id="re_${req.name}" class="form-control form-control-sm" placeholder="Deny Reason" onchange="process('${req.name}', 'Denied')"></div>
                         </div>
-                        <div class="p-3 bg-light rounded-3 mb-3 border small">${req.purpose}</div>
-                        <div class="row g-3">
-                            <div class="col-md-8 border-md-end">
-                                <div class="row g-2 mb-2">
-                                    <div class="col-6"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
-                                    <div class="col-6"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Vehicle"></div>
-                                </div>
-                                <button class="btn btn-success btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Approved')">APPROVE</button>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="text" id="re_${req.name}" class="form-control form-control-sm mb-2" placeholder="Reason">
-                                <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Denied')">DENY</button>
-                            </div>
+                    ` : `
+                        <div class="row g-2 align-items-center bg-white p-2 rounded border">
+                            <div class="col-4 small"><strong>Driver:</strong> ${req.driver}<br><strong>Start:</strong> ${req.startOdo}</div>
+                            <div class="col-5"><input type="number" id="odoE_${req.name}" class="form-control form-control-sm" placeholder="End Odometer"></div>
+                            <div class="col-3"><button class="btn btn-primary btn-sm w-100 fw-bold" onclick="completeTrip('${req.name}')">FINISH</button></div>
                         </div>
-                    </div>`;
+                    `}
+                </div>`;
             });
-        } catch (e) { list.innerHTML = "Error loading queue."; }
+            document.getElementById('statPending').innerText = pCount;
+            document.getElementById('statActive').innerText = aCount;
+        } catch(e) { list.innerHTML = "Error syncing data."; }
     }
 
     function process(name, status) {
-        const params = new URLSearchParams();
-        params.append('action', 'updateRequest');
-        params.append('name', name);
-        params.append('status', status);
-
+        const params = new URLSearchParams({ action: 'updateRequest', name, status });
         if (status === 'Approved') {
             const dr = document.getElementById(`dr_${name}`).value;
             const vh = document.getElementById(`vh_${name}`).value;
-            if(!dr || !vh) return alert("Fill Driver & Vehicle!");
-            params.append('driver', dr);
-            params.append('vehicle', vh);
+            const odo = document.getElementById(`odoS_${name}`).value;
+            if(!dr || !vh || !odo) return alert("Fill Driver, Vehicle, and Odo!");
+            params.append('driver', dr); params.append('vehicle', vh); params.append('startOdo', odo);
         } else {
             const re = document.getElementById(`re_${name}`).value;
-            if(!re) return alert("Fill Reason!");
-            params.append('reason', re);
+            if(!re) return; params.append('reason', re);
         }
+        submit(params);
+    }
 
-        const btn = event.target;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    function completeTrip(name) {
+        const eOdo = document.getElementById(`odoE_${name}`).value;
+        if(!eOdo) return alert("Enter End Odometer!");
+        submit(new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: eOdo }));
+    }
 
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: params })
-        .then(() => { 
-            setTimeout(() => { fetchPending(); loadStats(); }, 1000); 
-        })
-        .catch(() => { btn.disabled = false; });
+    function submit(params) {
+        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: params }).then(() => setTimeout(fetchPending, 1500));
     }
 
     async function searchHistory() {
-        const query = document.getElementById('histSearch').value;
+        const q = document.getElementById('histSearch').value;
         const list = document.getElementById('pendingList');
-        if(!query) return fetchPending();
-
-        list.innerHTML = `<div class="text-center mt-5"><div class="spinner-border text-secondary"></div></div>`;
-        try {
-            const res = await fetch(`${scriptURL}?name=${encodeURIComponent(query)}`);
-            const dataList = await res.json();
-            
-            if (dataList.status === "No Record Found") {
-                list.innerHTML = `<div class="alert alert-info text-center mt-4">No records found.</div>`;
-            } else {
-                list.innerHTML = `<h5 class="mb-3 text-muted">Search Results:</h5>`;
-                const items = Array.isArray(dataList) ? dataList : [dataList];
-                items.forEach(data => {
-                    list.innerHTML += `
-                    <div class="card admin-card p-4 history-card shadow-sm border-start-0 border-end border-4 ${data.status === 'Approved' ? 'border-success' : 'border-danger'}">
-                        <div class="d-flex justify-content-between mb-2">
-                            <h5 class="fw-bold mb-0">${data.name}</h5>
-                            <span class="badge ${data.status === 'Approved' ? 'bg-success' : 'bg-danger'} rounded-pill">${data.status}</span>
-                        </div>
-                        <div class="row small g-2 mt-2">
-                            <div class="col-6 text-muted">${data.dept}</div>
-                            <div class="col-6 text-end">${data.datetime}</div>
-                            <div class="col-12 border-top pt-2 mt-2"><strong>Driver:</strong> ${data.driver} | <strong>Vehicle:</strong> ${data.vehicle}</div>
-                            ${data.reason ? `<div class="col-12 text-danger mt-1"><strong>Reason:</strong> ${data.reason}</div>` : ''}
-                        </div>
-                    </div>`;
-                });
-                list.innerHTML += `<div class="text-center mt-3"><button class="btn btn-link" onclick="fetchPending()">Back to Queue</button></div>`;
-            }
-        } catch (e) { list.innerHTML = "Search Error."; }
+        if(!q) return fetchPending();
+        list.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+        const res = await fetch(`${scriptURL}?name=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        list.innerHTML = "<h4>Search Results</h4>";
+        (Array.isArray(data) ? data : [data]).forEach(item => {
+            list.innerHTML += `
+                <div class="card p-3 mb-2 small shadow-sm">
+                    <div class="d-flex justify-content-between fw-bold"><span>${item.name}</span><span class="text-primary">${item.status}</span></div>
+                    <div>${item.dept} | ${item.datetime}</div>
+                    <div class="mt-2 border-top pt-2">
+                        Driver: ${item.driver} | Vehicle: ${item.vehicle}<br>
+                        <strong>Start Odo:</strong> ${item.odoStart} | <strong>End Odo:</strong> ${item.odoEnd}<br>
+                        <strong class="text-success">Total Distance: ${item.distance} km</strong>
+                    </div>
+                </div>`;
+        });
     }
 </script>
 </body>
