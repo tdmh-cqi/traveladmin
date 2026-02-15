@@ -7,77 +7,38 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        :root {
-            --primary-blue: #0056b3;
-            --pending-gold: #fff9e6;
-            --pending-border: #ffc107;
-        }
-        body { background: #f0f2f5; color: #333; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        
-        .login-card { max-width: 400px; margin: 80px auto; border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        
+        :root { --primary-blue: #0056b3; --pending-gold: #fff9e6; --pending-border: #ffc107; }
+        body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
+        .login-card { max-width: 400px; margin: 80px auto; border-radius: 20px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         .admin-card { 
             background: #fff; border: none; border-radius: 16px; margin-bottom: 15px; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.03); border-left: 6px solid var(--pending-border);
-            animation: pulse-border 2s infinite;
         }
-
-        @keyframes pulse-border {
-            0% { border-left-color: #ffc107; }
-            50% { border-left-color: #ffe082; }
-            100% { border-left-color: #ffc107; }
-        }
-
-        .badge-pending { 
-            background: var(--pending-gold); color: #856404; border: 1px solid #ffeeba;
-            animation: blinker 1.5s linear infinite;
-        }
-
-        @keyframes blinker { 50% { opacity: 0.5; } }
-
+        .badge-pending { background: var(--pending-gold); color: #856404; border: 1px solid #ffeeba; }
         #adminPanel { display: none; }
-        .history-card { border-left: 6px solid #6c757d; animation: none; }
+        .spinner-container { display: flex; justify-content: center; padding: 50px; }
     </style>
 </head>
 <body>
 
 <div class="container py-3">
-    <div id="loginSection" class="card login-card p-4 shadow-sm">
-        <div class="text-center mb-4">
-            <div class="bg-primary text-white d-inline-block p-3 rounded-circle mb-3">
-                <i class="bi bi-shield-lock fs-2"></i>
-            </div>
-            <h4 class="fw-bold">Admin Access</h4>
+    <div id="loginSection" class="card login-card p-4 shadow-sm text-center">
+        <div class="mb-3 text-primary"><i class="bi bi-shield-lock-fill fs-1"></i></div>
+        <h4 class="fw-bold mb-3">Admin Access</h4>
+        <div class="input-group mb-3">
+            <input type="password" id="passInput" class="form-control" placeholder="Enter Admin Password">
         </div>
-        
-        <div class="mb-3">
-            <label class="form-label small fw-bold">Management Password</label>
-            <div class="input-group shadow-sm">
-                <input type="password" id="passInput" class="form-control border-end-0" placeholder="Enter password">
-                <span class="input-group-text bg-white border-start-0" onclick="togglePass()" style="cursor: pointer;">
-                    <i class="bi bi-eye-fill text-muted" id="toggleIcon"></i>
-                </span>
-            </div>
-        </div>
-        <button class="btn btn-primary w-100 fw-bold py-2 rounded-pill" onclick="checkPass()">Login to Console</button>
+        <button class="btn btn-primary w-100 fw-bold" onclick="checkPass()">Login to Console</button>
     </div>
 
     <div id="adminPanel">
-        <div class="card p-3 mb-4 shadow-sm border-0 rounded-4">
-            <div class="input-group">
-                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search"></i></span>
-                <input type="text" id="histSearch" class="form-control border-0 shadow-none" placeholder="Search History by Name or Dept...">
-                <button class="btn btn-dark rounded-pill px-4" onclick="searchHistory()">Search</button>
-            </div>
-        </div>
-
-        <div class="section-header d-flex justify-content-between align-items-end mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h3 class="fw-bold mb-0 text-dark">Live Queue</h3>
-                <span class="badge rounded-pill badge-pending" id="countDisplay">0 Requests Waiting</span>
+                <h3 class="fw-bold mb-0">Management Queue</h3>
+                <span class="badge badge-pending" id="countDisplay">0 Requests Pending</span>
             </div>
-            <button class="btn btn-white shadow-sm btn-sm rounded-pill" onclick="fetchPending()">
-                <i class="bi bi-arrow-clockwise"></i> Sync
+            <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="fetchPending()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Sync
             </button>
         </div>
 
@@ -86,112 +47,106 @@
 </div>
 
 <script>
+    // YOUR SPECIFIC APPSCRIPT URL
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
     const ADMIN_PASS = 'bestgeneralhospital1211';
 
-    function togglePass() {
-        const passInput = document.getElementById('passInput');
-        const icon = document.getElementById('toggleIcon');
-        passInput.type = passInput.type === "password" ? "text" : "password";
-        icon.classList.toggle("bi-eye-fill");
-        icon.classList.toggle("bi-eye-slash-fill");
-    }
-
     function checkPass() {
         if(document.getElementById('passInput').value === ADMIN_PASS) {
-            document.getElementById('loginSection').classList.add('d-none');
+            document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             fetchPending();
-        } else { alert("❌ Incorrect Password"); }
+        } else { alert("❌ Access Denied: Incorrect Password"); }
     }
 
     async function fetchPending() {
         const list = document.getElementById('pendingList');
-        list.innerHTML = `<div class="text-center mt-5"><div class="spinner-grow text-primary"></div></div>`;
+        list.innerHTML = '<div class="spinner-container"><div class="spinner-border text-primary"></div></div>';
+        
         try {
             const res = await fetch(`${scriptURL}?action=getPending`);
             const data = await res.json();
-            document.getElementById('countDisplay').innerText = `${data.length} Requests Waiting`;
-            list.innerHTML = data.length ? "" : `<div class="text-center mt-5 py-5 bg-white rounded-4">No pending requests.</div>`;
-
-            data.forEach(req => {
-                list.innerHTML += `
-                    <div class="card admin-card p-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <div><h5 class="fw-bold text-primary mb-0">${req.name}</h5><small class="text-muted fw-bold">${req.dept}</small></div>
-                            <small class="text-muted"><i class="bi bi-clock"></i> ${req.time}</small>
-                        </div>
-                        <div class="p-3 bg-light rounded-3 mb-3 border small">${req.purpose}</div>
-                        <div class="row g-3">
-                            <div class="col-md-8 border-md-end">
-                                <div class="row g-2 mb-2">
-                                    <div class="col-6"><input type="text" id="dr_${req.name}" class="form-control form-control-sm" placeholder="Driver"></div>
-                                    <div class="col-6"><input type="text" id="vh_${req.name}" class="form-control form-control-sm" placeholder="Vehicle"></div>
-                                </div>
-                                <button class="btn btn-success btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Approved')">APPROVE</button>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="text" id="re_${req.name}" class="form-control form-control-sm mb-2" placeholder="Reason">
-                                <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Denied')">DENY</button>
-                            </div>
-                        </div>
-                    </div>`;
-            });
-        } catch (e) { list.innerHTML = "Error loading queue."; }
-    }
-
-    async function searchHistory() {
-        const query = document.getElementById('histSearch').value;
-        const list = document.getElementById('pendingList');
-        if(!query) return fetchPending();
-
-        list.innerHTML = `<div class="text-center mt-5"><div class="spinner-border text-secondary"></div><p>Searching Archives...</p></div>`;
-        
-        try {
-            const res = await fetch(`${scriptURL}?name=${encodeURIComponent(query)}`);
-            const data = await res.json();
+            document.getElementById('countDisplay').innerText = `${data.length} Requests Pending`;
             
-            if (data.status === "No Record Found") {
-                list.innerHTML = `<div class="alert alert-info text-center mt-4">No records found for "${query}"</div>`;
-            } else {
-                list.innerHTML = `
-                    <h5 class="mb-3 text-muted px-2">Search Result:</h5>
-                    <div class="card admin-card p-4 history-card">
-                        <div class="d-flex justify-content-between mb-2">
-                            <h5 class="fw-bold mb-0">${data.name}</h5>
-                            <span class="badge ${data.status === 'Approved' ? 'bg-success' : 'bg-danger'} rounded-pill">${data.status}</span>
+            if(data.length === 0) {
+                list.innerHTML = '<div class="text-center p-5 bg-white rounded-4 mt-3">No pending requests found.</div>';
+                return;
+            }
+
+            list.innerHTML = "";
+            data.forEach((req, index) => {
+                // Generate a unique safe ID for each card
+                const safeID = "req_" + index; 
+                list.innerHTML += `
+                <div class="card admin-card p-4">
+                    <div class="d-flex justify-content-between">
+                        <h5 class="fw-bold text-primary mb-0">${req.name}</h5>
+                        <small class="text-muted">${req.time}</small>
+                    </div>
+                    <p class="small fw-bold text-secondary mb-2">${req.dept}</p>
+                    <div class="p-2 bg-light rounded small mb-3 border"><strong>Purpose:</strong> ${req.purpose}</div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-7 border-md-end">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <input type="text" id="dr_${safeID}" class="form-control form-control-sm" placeholder="Driver">
+                                </div>
+                                <div class="col-6">
+                                    <input type="text" id="vh_${safeID}" class="form-control form-control-sm" placeholder="Vehicle">
+                                </div>
+                            </div>
+                            <button class="btn btn-success btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Approved', '${safeID}')">APPROVE</button>
                         </div>
-                        <hr>
-                        <div class="row small g-2">
-                            <div class="col-6"><strong>Driver:</strong> ${data.driver}</div>
-                            <div class="col-6"><strong>Vehicle:</strong> ${data.vehicle}</div>
-                            <div class="col-12 mt-2 text-muted"><strong>Schedule:</strong> ${data.datetime}</div>
-                            ${data.reason ? `<div class="col-12 text-danger"><strong>Reason:</strong> ${data.reason}</div>` : ''}
+                        
+                        <div class="col-md-5 ps-md-4">
+                            <input type="text" id="re_${safeID}" class="form-control form-control-sm mb-2" placeholder="Reason for denial">
+                            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="process('${req.name}', 'Denied', '${safeID}')">DENY</button>
                         </div>
                     </div>
-                    <div class="text-center mt-3"><button class="btn btn-link text-decoration-none" onclick="fetchPending()">Back to Live Queue</button></div>`;
-            }
-        } catch (e) { list.innerHTML = "Search Error."; }
+                </div>`;
+            });
+        } catch(e) { 
+            list.innerHTML = '<div class="alert alert-danger">Error loading data. Ensure AppScript is deployed as "Anyone".</div>'; 
+        }
     }
 
-    function process(name, status) {
-        let params = { action: 'updateRequest', name: name, status: status };
+    function process(name, status, id) {
+        const btn = event.target;
+        const formData = new URLSearchParams();
+        formData.append('action', 'updateRequest');
+        formData.append('name', name);
+        formData.append('status', status);
+
         if (status === 'Approved') {
-            params.driver = document.getElementById(`dr_${name}`).value;
-            params.vehicle = document.getElementById(`vh_${name}`).value;
-            if(!params.driver || !params.vehicle) return alert("Fill Driver & Vehicle!");
+            const driver = document.getElementById(`dr_${id}`).value;
+            const vehicle = document.getElementById(`vh_${id}`).value;
+            if(!driver || !vehicle) return alert("Please fill Driver and Vehicle details.");
+            formData.append('driver', driver);
+            formData.append('vehicle', vehicle);
         } else {
-            params.reason = document.getElementById(`re_${name}`).value;
-            if(!params.reason) return alert("Fill Reason!");
+            const reason = document.getElementById(`re_${id}`).value;
+            if(!reason) return alert("Please provide a reason for denial.");
+            formData.append('reason', reason);
         }
 
-        const btn = event.target;
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
 
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(params) })
-        .then(() => { fetchPending(); })
-        .catch(() => { btn.disabled = false; });
+        fetch(scriptURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: formData
+        })
+        .then(() => {
+            alert(`Successfully ${status}: ${name}`);
+            fetchPending(); // Refresh the list
+        })
+        .catch(err => {
+            alert("Connection error. Try re-deploying AppScript.");
+            btn.disabled = false;
+            btn.innerText = status === 'Approved' ? 'APPROVE' : 'DENY';
+        });
     }
 </script>
 </body>
