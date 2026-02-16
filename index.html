@@ -8,22 +8,90 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
         body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; }
         .btn-animate { transition: all 0.2s; cursor: pointer; }
         .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        
+        /* Status Pills */
         .status-pill { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
-        .status-pending { background: #fff3cd; color: #856404; animation: pulse 2s infinite; }
+        .status-pending { background: #fff3cd; color: #856404; }
         .status-approved { background: #d1e7dd; color: #0f5132; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* Priority STAT Styling */
+        .priority-stat { 
+            border-left: 8px solid #dc3545 !important; 
+            background-color: #fff5f5; 
+            animation: border-blink-red 1.5s infinite;
+        }
+        .stat-badge { 
+            background: #dc3545; 
+            color: white; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-size: 0.7rem; 
+            font-weight: 800; 
+            margin-left: 5px;
+            animation: pulse-red 1s infinite;
+        }
+
+        /* On-Trip Indicator */
+        .trip-toggle-btn { 
+            width: 32px; 
+            height: 32px; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 50%; 
+            border: 2px solid #cbd5e0; 
+            color: #718096;
+            cursor: pointer; 
+            transition: all 0.3s;
+            margin-right: 12px;
+            background: white;
+        }
+        .trip-toggle-btn.active { 
+            background-color: #28a745; 
+            border-color: #1e7e34; 
+            color: white;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.4);
+        }
+
+        .on-trip-label {
+            display: none;
+            color: #198754;
+            font-weight: 800;
+            font-size: 0.75rem;
+            margin-left: 10px;
+            animation: blink-green 1s infinite;
+        }
+        .trip-toggle-btn.active + div .on-trip-label { display: inline-block; }
+
+        /* Animations */
+        @keyframes border-blink-red {
+            0% { border-left-color: #dc3545; }
+            50% { border-left-color: #ffc107; }
+            100% { border-left-color: #dc3545; }
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes blink-green {
+            0% { opacity: 1; }
+            50% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+        
         #adminPanel { display: none; }
         .endorse-box { background: #fdf2f2; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
-        /* Fix for sticky header background */
         .sticky-top { background-color: #f8f9fa !important; z-index: 1020; }
     </style>
 </head>
 <body>
 
 <div class="container py-4" style="max-width: 900px;">
+    <!-- Login -->
     <div id="loginSection" class="card p-4 mx-auto text-center shadow-lg" style="max-width: 400px; margin-top: 100px;">
         <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
         <h4 class="fw-bold">Admin Portal</h4>
@@ -34,6 +102,7 @@
         <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">ACCESS QUEUE</button>
     </div>
 
+    <!-- Panel -->
     <div id="adminPanel">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-dark"><i class="bi bi-bus-front"></i> Travel Queue</h3>
@@ -46,6 +115,7 @@
     </div>
 </div>
 
+<!-- History Modal -->
 <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 rounded-4 shadow-lg">
@@ -115,54 +185,102 @@
         } else { alert("Incorrect Password"); }
     }
 
-    // MAIN QUEUE LOGIC (KEEP UNCHANGED)
+    // Toggle the "On Trip" Visual Indicator
+    function toggleOnTrip(element) {
+        element.classList.toggle('active');
+        const icon = element.querySelector('i');
+        if (element.classList.contains('active')) {
+            icon.className = 'bi bi-cursor-fill';
+        } else {
+            icon.className = 'bi bi-cursor';
+        }
+    }
+
     async function fetchPending() {
         const list = document.getElementById('queueList');
         list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
-        const res = await fetch(`${scriptURL}?action=getPending`);
-        const data = await res.json();
-        list.innerHTML = data.length ? "" : '<div class="card p-5 text-center text-muted fw-bold">No active requests.</div>';
+        
+        try {
+            const res = await fetch(`${scriptURL}?action=getPending`);
+            let data = await res.json();
+            
+            if (!data.length) {
+                list.innerHTML = '<div class="card p-5 text-center text-muted fw-bold">No active requests.</div>';
+                return;
+            }
 
-        data.forEach(req => {
-            const isApp = req.status === "Approved";
-            const timeDisplay = forceCleanDate(req.time);
+            // SORTING: Priority "STAT" first, then chronological (nearest time)
+            data.sort((a, b) => {
+                const aEnd = (a.endorsement || "").toLowerCase();
+                const bEnd = (b.endorsement || "").toLowerCase();
+                const aIsStat = aEnd.includes("stat");
+                const bIsStat = bEnd.includes("stat");
 
-            list.innerHTML += `
-                <div class="card p-4 mb-3 border-start border-5 ${isApp ? 'border-success' : 'border-warning shadow-sm'}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="fw-bold text-primary mb-1">${req.name} <small class="text-muted fw-normal">(${req.dept})</small></h5>
-                            <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${timeDisplay}</div>
+                if (aIsStat && !bIsStat) return -1;
+                if (!aIsStat && bIsStat) return 1;
+
+                // If both are same priority, sort by time (nearest first)
+                return new Date(a.time) - new Date(b.time);
+            });
+
+            list.innerHTML = "";
+
+            data.forEach(req => {
+                const isApp = req.status === "Approved";
+                const isStat = (req.endorsement || "").toLowerCase().includes("stat");
+                const timeDisplay = forceCleanDate(req.time);
+
+                list.innerHTML += `
+                    <div class="card p-4 mb-3 border-start border-5 ${isStat ? 'priority-stat' : (isApp ? 'border-success shadow-sm' : 'border-warning shadow-sm')}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center">
+                                ${isApp ? `
+                                    <div class="trip-toggle-btn" onclick="toggleOnTrip(this)" title="Toggle On-Trip Status">
+                                        <i class="bi bi-cursor"></i>
+                                    </div>
+                                ` : ''}
+                                <div>
+                                    <h5 class="fw-bold text-primary mb-1">
+                                        ${req.name} 
+                                        <small class="text-muted fw-normal">(${req.dept})</small>
+                                        ${isStat ? '<span class="stat-badge"><i class="bi bi-exclamation-triangle-fill"></i> STAT</span>' : ''}
+                                        <span class="on-trip-label"><i class="bi bi-record-fill"></i> ON TRIP</span>
+                                    </h5>
+                                    <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${timeDisplay}</div>
+                                </div>
+                            </div>
+                            <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
                         </div>
-                        <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
-                    </div>
 
-                    <div class="bg-white border rounded p-3 my-3">
-                        <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
-                        <div class="fw-bold text-dark mb-2">${req.purpose}</div>
-                        ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
-                    </div>
+                        <div class="bg-white border rounded p-3 my-3">
+                            <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
+                            <div class="fw-bold text-dark mb-2">${req.purpose}</div>
+                            ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
+                        </div>
 
-                    ${!isApp ? `
-                        <div class="row g-2">
-                            <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
-                            <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Vehicle"></div>
-                            <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
-                            <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                            <div class="col-6"><div class="input-group">
-                                <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
-                                <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
-                            </div></div>
-                        </div>
-                    ` : `
-                        <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
-                            <div class="col-md-5 small"><strong>Driver:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
-                            <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
-                            <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
-                        </div>
-                    `}
-                </div>`;
-        });
+                        ${!isApp ? `
+                            <div class="row g-2">
+                                <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
+                                <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Vehicle"></div>
+                                <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
+                                <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
+                                <div class="col-6"><div class="input-group">
+                                    <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
+                                    <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
+                                </div></div>
+                            </div>
+                        ` : `
+                            <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
+                                <div class="col-md-5 small"><strong>Driver:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
+                                <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
+                                <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
+                            </div>
+                        `}
+                    </div>`;
+            });
+        } catch (error) {
+            list.innerHTML = '<div class="card p-5 text-center text-danger fw-bold">Error fetching queue. Please check your connection.</div>';
+        }
     }
 
     function process(name, status) {
@@ -185,7 +303,6 @@
         fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
     }
 
-    // UPDATED HISTORY LOGIC WITH VEHICLE & PAGINATION
     async function showHistory(isLoadMore = false) {
         const content = document.getElementById('historyContent');
         const btn = document.getElementById('loadMoreBtn');
@@ -202,15 +319,12 @@
         try {
             const res = await fetch(`${scriptURL}?action=history&start=${currentOffset}`);
             const data = await res.json();
-            
             if (!isLoadMore) content.innerHTML = ""; 
-            
             if (data.length === 0) {
                 if (isLoadMore) alert("No more records found.");
                 btn.style.display = "none";
                 return;
             }
-
             const rowsHtml = data.map(h => {
                 const dist = (h.endOdo && h.startOdo) ? (Number(h.endOdo) - Number(h.startOdo)) : '---';
                 return `
@@ -232,14 +346,11 @@
                         <td><strong>${dist} km</strong></td>
                     </tr>`;
             }).join('');
-
             content.insertAdjacentHTML('beforeend', rowsHtml);
             currentOffset += data.length;
-            
             btn.innerHTML = 'VIEW MORE RECORDS';
             btn.disabled = false;
             btn.style.display = data.length < 30 ? "none" : "inline-block";
-
         } catch (e) {
             content.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history.</td></tr>';
         }
