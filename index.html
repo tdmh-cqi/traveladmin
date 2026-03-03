@@ -3,366 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDMH Admin Console</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <title>CSR Admin - Manage Requests</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; }
-        .btn-animate { transition: all 0.2s; cursor: pointer; }
-        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        body { font-family: 'Roboto', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #002147; display: flex; justify-content: center; align-items: center; z-index: 1000; color: white; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; text-align: center; color: #333; width: 90%; max-width: 400px; }
+        .login-box input { width: 100%; padding: 12px; margin: 20px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .login-box button { background: #002147; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
         
-        /* Status Pills */
-        .status-pill { padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-approved { background: #d1e7dd; color: #0f5132; }
+        .admin-container { max-width: 1600px; width: 100%; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: none; }
+        .header { border-bottom: 2px solid #002147; padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { color: #002147; font-size: 24px; margin: 0; }
         
-        /* Priority STAT Styling */
-        .priority-stat { 
-            border-left: 8px solid #dc3545 !important; 
-            background-color: #fff5f5; 
-            animation: border-blink-red 1.5s infinite;
-        }
-        .stat-badge { 
-            background: #dc3545; 
-            color: white; 
-            padding: 2px 8px; 
-            border-radius: 4px; 
-            font-size: 0.7rem; 
-            font-weight: 800; 
-            margin-left: 5px;
-            animation: pulse-red 1s infinite;
-        }
+        .sync-status { font-size: 12px; display: flex; align-items: center; gap: 8px; color: #666; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+        .dot-online { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+        .dot-offline { background: #e74c3c; box-shadow: 0 0 5px #e74c3c; }
 
-        /* On-Trip Indicator */
-        .trip-toggle-btn { 
-            width: 32px; 
-            height: 32px; 
-            display: inline-flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 50%; 
-            border: 2px solid #cbd5e0; 
-            color: #718096;
-            cursor: pointer; 
-            transition: all 0.3s;
-            margin-right: 12px;
-            background: white;
-        }
-        .trip-toggle-btn.active { 
-            background-color: #28a745; 
-            border-color: #1e7e34; 
-            color: white;
-            box-shadow: 0 0 10px rgba(40, 167, 69, 0.4);
-        }
+        .filter-bar { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; border: 1px solid #e9ecef; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 12px; font-weight: bold; color: #002147; }
+        .filter-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
 
-        .on-trip-label {
-            display: none;
-            color: #198754;
-            font-weight: 800;
-            font-size: 0.75rem;
-            margin-left: 10px;
-            animation: blink-green 1s infinite;
-        }
-        .trip-toggle-btn.active + div .on-trip-label { display: inline-block; }
-
-        /* Animations */
-        @keyframes border-blink-red {
-            0% { border-left-color: #dc3545; }
-            50% { border-left-color: #ffc107; }
-            100% { border-left-color: #dc3545; }
-        }
-        @keyframes pulse-red {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes blink-green {
-            0% { opacity: 1; }
-            50% { opacity: 0.2; }
-            100% { opacity: 1; }
-        }
+        .btn-group { display: flex; gap: 10px; align-items: center; }
+        .refresh-btn { background-color: #002147; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .clear-btn { background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        #adminPanel { display: none; }
-        .endorse-box { background: #fdf2f2; border-left: 4px solid #dc3545; padding: 10px; border-radius: 5px; color: #b02a37; font-weight: 600; font-size: 0.85rem; }
-        .sticky-top { background-color: #f8f9fa !important; z-index: 1020; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+        th { background-color: #f8f9fa; color: #002147; position: sticky; top: 0; }
+        .status-select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 140px; }
+        .admin-input { padding: 6px; border-radius: 4px; border: 1px solid #ccc; width: 150px; font-size: 12px; }
+        .save-btn { background: #002147; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+
+        .status-label { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .st-pending { background: #fff3e0; color: #ef6c00; }
+        .st-approved { background: #e8f5e9; color: #2e7d32; }
+        .st-disapproved { background: #ffebee; color: #c62828; }
+        .st-processing { background: #e3f2fd; color: #1565c0; }
+        .st-readytodispatch { background: #f3e5f5; color: #7b1fa2; }
+        
+        .loading-overlay { text-align: center; padding: 50px; color: #666; }
+        .no-results { text-align: center; padding: 20px; color: #999; font-style: italic; }
     </style>
 </head>
 <body>
 
-<div class="container py-4" style="max-width: 900px;">
-    <!-- Login -->
-    <div id="loginSection" class="card p-4 mx-auto text-center shadow-lg" style="max-width: 400px; margin-top: 100px;">
-        <i class="bi bi-shield-lock-fill text-primary display-4 mb-3"></i>
-        <h4 class="fw-bold">Admin Portal</h4>
-        <div class="input-group my-3">
-            <input type="password" id="passInput" class="form-control" placeholder="Password">
-            <button class="btn btn-outline-secondary" onclick="togglePass()"><i class="bi bi-eye" id="toggleIcon"></i></button>
-        </div>
-        <button class="btn btn-primary w-100 fw-bold btn-animate" onclick="checkPass()">ACCESS QUEUE</button>
-    </div>
-
-    <!-- Panel -->
-    <div id="adminPanel">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark"><i class="bi bi-bus-front"></i> Travel Queue</h3>
-            <div>
-                <button class="btn btn-dark btn-sm rounded-pill btn-animate me-2 px-3" onclick="showHistory()"><i class="bi bi-clock-history"></i> History</button>
-                <button class="btn btn-primary btn-sm rounded-pill btn-animate px-3" onclick="fetchPending()"><i class="bi bi-arrow-clockwise"></i> Sync</button>
-            </div>
-        </div>
-        <div id="queueList"></div>
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2>CSR Access Control</h2>
+        <p style="font-size: 12px; color: #666;">Admin Dashboard Login</p>
+        <input type="password" id="passInput" placeholder="Enter Admin Password" onkeypress="if(event.key==='Enter')checkPassword()">
+        <button onclick="checkPassword()">Login</button>
     </div>
 </div>
 
-<!-- History Modal -->
-<div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content border-0 rounded-4 shadow-lg">
-            <div class="modal-header bg-dark text-white rounded-top-4">
-                <div class="d-flex align-items-center w-100">
-                    <h5 class="fw-bold mb-0 me-auto">Activity Log</h5>
-                    <div class="input-group input-group-sm w-50 me-3">
-                        <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                        <input type="text" id="historySearch" class="form-control border-0 bg-light" placeholder="Search by name or dept..." onkeyup="filterHistory()">
-                    </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-            </div>
-            <div class="modal-body p-0">
-                <div class="table-responsive" style="max-height: 65vh;">
-                    <table class="table table-hover mb-0" id="historyTable" style="font-size: 0.85rem;">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th>User</th>
-                                <th>Purpose/Endorsement</th>
-                                <th>Status</th>
-                                <th>Assignment</th>
-                                <th>Distance</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyContent"></tbody>
-                    </table>
-                </div>
-                <div class="p-3 text-center bg-light border-top">
-                    <button id="loadMoreBtn" class="btn btn-outline-primary btn-sm px-4 rounded-pill fw-bold btn-animate" onclick="showHistory(true)">
-                        VIEW MORE RECORDS
-                    </button>
-                </div>
+<div class="admin-container" id="mainContainer">
+    <div class="header">
+        <div>
+            <h1>CSR ADMIN: Request Management</h1>
+            <div class="sync-status">
+                <div id="syncDot" class="status-dot"></div>
+                <span id="syncText">Checking database connection...</span>
             </div>
         </div>
+        <div class="btn-group">
+            <button class="refresh-btn" onclick="fetchRequests()">🔄 Refresh Data</button>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Department</label>
+            <select id="filterDept" class="filter-input" onchange="applyFilters()">
+                <option value="">All Departments</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>From Date</label>
+            <input type="date" id="filterDateFrom" class="filter-input" onchange="applyFilters()">
+        </div>
+        <div class="filter-group">
+            <label>To Date</label>
+            <input type="date" id="filterDateTo" class="filter-input" onchange="applyFilters()">
+        </div>
+        <div class="filter-group">
+            <button class="clear-btn" onclick="clearFilters()">Clear Filters</button>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table id="adminTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date/Dept</th>
+                    <th>Requester</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    <th>Update Status</th>
+                    <th>Received By</th>
+                    <th>Admin Remarks</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="adminBody"></tbody>
+        </table>
+        <div id="loader" class="loading-overlay">Loading...</div>
+        <div id="noDataMsg" class="no-results" style="display:none;">No requests match the selected filters.</div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzGaJ2MzbJ-h3WMXVjap7vZUwhud8yYPkuuJQjYrwKODMwIjMJkkuHwQrd4B80dMPLt/exec';
-    const ADMIN_PASS = 'bestgeneralhospital1211';
-    let currentOffset = 0;
+    // Ensure this URL exactly matches your "Web App" deployment URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhQwVJTvLo_W4IcxPTdcCDojC92XjS4Y5wb1r_ldwO1jXu7LJ99QBMJ_Ncl4FBek239Q/exec"; 
+    const SECRET_KEY = "CSR2026APPRVD";
+    let allRequests = [];
 
-    function forceCleanDate(raw) {
-        if (!raw || raw === "N/A") return "N/A";
-        const d = new Date(raw);
-        if (isNaN(d.getTime())) return raw.replace('T', ' ').split('.')[0]; 
-        return d.toLocaleString('en-US', { 
-            month: '2-digit', day: '2-digit', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
-        });
-    }
-
-    function togglePass() {
-        const input = document.getElementById('passInput');
-        const icon = document.getElementById('toggleIcon');
-        input.type = input.type === "password" ? "text" : "password";
-        icon.classList.toggle('bi-eye'); icon.classList.toggle('bi-eye-slash');
-    }
-
-    function checkPass() {
-        if(document.getElementById('passInput').value === ADMIN_PASS) {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'block';
-            fetchPending();
-        } else { alert("Incorrect Password"); }
-    }
-
-    // Toggle the "On Trip" Visual Indicator
-    function toggleOnTrip(element) {
-        element.classList.toggle('active');
-        const icon = element.querySelector('i');
-        if (element.classList.contains('active')) {
-            icon.className = 'bi bi-cursor-fill';
-        } else {
-            icon.className = 'bi bi-cursor';
-        }
-    }
-
-    async function fetchPending() {
-        const list = document.getElementById('queueList');
-        list.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
-        
+    async function checkSync() {
+        const dot = document.getElementById('syncDot');
+        const text = document.getElementById('syncText');
         try {
-            const res = await fetch(`${scriptURL}?action=getPending`);
-            let data = await res.json();
-            
-            if (!data.length) {
-                list.innerHTML = '<div class="card p-5 text-center text-muted fw-bold">No active requests.</div>';
-                return;
+            // Using JSONP or standard fetch with no-cache to ensure we get fresh status
+            const res = await fetch(`${SCRIPT_URL}?action=getRequests`, { cache: "no-store" });
+            if (res.ok) {
+                dot.className = "status-dot dot-online";
+                text.innerText = "Synced with Google Sheets";
+                return true;
             }
-
-            // SORTING: Priority "STAT" first, then chronological (nearest time)
-            data.sort((a, b) => {
-                const aEnd = (a.endorsement || "").toLowerCase();
-                const bEnd = (b.endorsement || "").toLowerCase();
-                const aIsStat = aEnd.includes("stat");
-                const bIsStat = bEnd.includes("stat");
-
-                if (aIsStat && !bIsStat) return -1;
-                if (!aIsStat && bIsStat) return 1;
-
-                // If both are same priority, sort by time (nearest first)
-                return new Date(a.time) - new Date(b.time);
-            });
-
-            list.innerHTML = "";
-
-            data.forEach(req => {
-                const isApp = req.status === "Approved";
-                const isStat = (req.endorsement || "").toLowerCase().includes("stat");
-                const timeDisplay = forceCleanDate(req.time);
-
-                list.innerHTML += `
-                    <div class="card p-4 mb-3 border-start border-5 ${isStat ? 'priority-stat' : (isApp ? 'border-success shadow-sm' : 'border-warning shadow-sm')}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="d-flex align-items-center">
-                                ${isApp ? `
-                                    <div class="trip-toggle-btn" onclick="toggleOnTrip(this)" title="Toggle On-Trip Status">
-                                        <i class="bi bi-cursor"></i>
-                                    </div>
-                                ` : ''}
-                                <div>
-                                    <h5 class="fw-bold text-primary mb-1">
-                                        ${req.name} 
-                                        <small class="text-muted fw-normal">(${req.dept})</small>
-                                        ${isStat ? '<span class="stat-badge"><i class="bi bi-exclamation-triangle-fill"></i> STAT</span>' : ''}
-                                        <span class="on-trip-label"><i class="bi bi-record-fill"></i> ON TRIP</span>
-                                    </h5>
-                                    <div class="text-secondary small fw-bold"><i class="bi bi-clock"></i> ${timeDisplay}</div>
-                                </div>
-                            </div>
-                            <span class="status-pill ${isApp ? 'status-approved' : 'status-pending'}">${req.status}</span>
-                        </div>
-
-                        <div class="bg-white border rounded p-3 my-3">
-                            <div class="small text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Purpose</div>
-                            <div class="fw-bold text-dark mb-2">${req.purpose}</div>
-                            ${req.endorsement && req.endorsement !== 'None' ? `<div class="endorse-box mt-2">Endorsement: ${req.endorsement}</div>` : ''}
-                        </div>
-
-                        ${!isApp ? `
-                            <div class="row g-2">
-                                <div class="col-4"><input type="text" id="dr_${req.name}" class="form-control" placeholder="Driver"></div>
-                                <div class="col-4"><input type="text" id="vh_${req.name}" class="form-control" placeholder="Vehicle"></div>
-                                <div class="col-4"><input type="number" id="odoS_${req.name}" class="form-control" placeholder="Start Odo"></div>
-                                <div class="col-6"><button class="btn btn-success w-100 fw-bold btn-animate" onclick="process('${req.name}', 'Approved')">APPROVE</button></div>
-                                <div class="col-6"><div class="input-group">
-                                    <input type="text" id="re_${req.name}" class="form-control" placeholder="Reason">
-                                    <button class="btn btn-danger btn-animate" onclick="process('${req.name}', 'Denied')">DENY</button>
-                                </div></div>
-                            </div>
-                        ` : `
-                            <div class="row g-2 align-items-center bg-success bg-opacity-10 p-3 rounded">
-                                <div class="col-md-5 small"><strong>Driver:</strong> ${req.driver} | <strong>Start Odo:</strong> ${req.startOdo}</div>
-                                <div class="col-md-4"><input type="number" id="odoE_${req.name}" class="form-control" placeholder="Final Odometer"></div>
-                                <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold btn-animate" onclick="complete('${req.name}')">FINISH TRIP</button></div>
-                            </div>
-                        `}
-                    </div>`;
-            });
-        } catch (error) {
-            list.innerHTML = '<div class="card p-5 text-center text-danger fw-bold">Error fetching queue. Please check your connection.</div>';
-        }
-    }
-
-    function process(name, status) {
-        const p = new URLSearchParams({ action: 'updateRequest', name, status });
-        if(status === 'Approved') {
-            const dr = document.getElementById(`dr_${name}`).value, vh = document.getElementById(`vh_${name}`).value, odo = document.getElementById(`odoS_${name}`).value;
-            if(!dr || !vh || !odo) return alert("Fill all details");
-            p.append('driver', dr); p.append('vehicle', vh); p.append('startOdo', odo);
-        } else {
-            const re = document.getElementById(`re_${name}`).value;
-            if(!re) return alert("Fill reason");
-            p.append('reason', re);
-        }
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: p }).then(() => fetchPending());
-    }
-
-    function complete(name) {
-        const odo = document.getElementById(`odoE_${name}`).value;
-        if(!odo) return alert("Enter End Odometer");
-        fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams({ action: 'updateRequest', name, status: 'Completed', endOdo: odo }) }).then(() => fetchPending());
-    }
-
-    async function showHistory(isLoadMore = false) {
-        const content = document.getElementById('historyContent');
-        const btn = document.getElementById('loadMoreBtn');
-        
-        if (!isLoadMore) {
-            currentOffset = 0;
-            content.innerHTML = '<tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-dark"></div></td></tr>';
-            new bootstrap.Modal('#historyModal').show();
-        } else {
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
-            btn.disabled = true;
-        }
-
-        try {
-            const res = await fetch(`${scriptURL}?action=history&start=${currentOffset}`);
-            const data = await res.json();
-            if (!isLoadMore) content.innerHTML = ""; 
-            if (data.length === 0) {
-                if (isLoadMore) alert("No more records found.");
-                btn.style.display = "none";
-                return;
-            }
-            const rowsHtml = data.map(h => {
-                const dist = (h.endOdo && h.startOdo) ? (Number(h.endOdo) - Number(h.startOdo)) : '---';
-                return `
-                    <tr class="history-row">
-                        <td>
-                            <strong>${h.name}</strong><br>
-                            <small class="text-muted">${h.dept}</small><br>
-                            <small class="fw-bold text-primary">${forceCleanDate(h.time)}</small>
-                        </td>
-                        <td>
-                            <div class="fw-bold text-wrap" style="max-width:250px">${h.purpose}</div>
-                            <div class="text-danger small">${h.endorsement || ''}</div>
-                        </td>
-                        <td><span class="badge ${h.status==='Completed'?'bg-primary':'bg-secondary'}">${h.status}</span></td>
-                        <td>
-                            <div class="small"><strong>Driver:</strong> ${h.driver||'--'}</div>
-                            <div class="small"><strong>Vehicle:</strong> ${h.vehicle||'--'}</div>
-                        </td>
-                        <td><strong>${dist} km</strong></td>
-                    </tr>`;
-            }).join('');
-            content.insertAdjacentHTML('beforeend', rowsHtml);
-            currentOffset += data.length;
-            btn.innerHTML = 'VIEW MORE RECORDS';
-            btn.disabled = false;
-            btn.style.display = data.length < 30 ? "none" : "inline-block";
         } catch (e) {
-            content.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history.</td></tr>';
+            dot.className = "status-dot dot-offline";
+            text.innerText = "Connection Failed: Check Script URL & Access";
+            return false;
         }
     }
 
-    function filterHistory() {
-        const input = document.getElementById('historySearch').value.toLowerCase();
-        const rows = document.getElementsByClassName('history-row');
-        Array.from(rows).forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(input) ? "" : "none";
+    function checkPassword() {
+        if (document.getElementById('passInput').value === SECRET_KEY) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+            fetchRequests();
+        } else {
+            Swal.fire('Error', 'Incorrect Password', 'error');
+        }
+    }
+
+    async function fetchRequests() {
+        const dot = document.getElementById('syncDot');
+        const text = document.getElementById('syncText');
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('adminBody').innerHTML = '';
+        document.getElementById('noDataMsg').style.display = 'none';
+        
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=getRequests`);
+            if (!res.ok) throw new Error("HTTP error");
+            
+            const data = await res.json();
+            allRequests = data.sort((a, b) => b.id - a.id);
+            populateDeptFilter(allRequests);
+            renderTable(allRequests);
+            
+            dot.className = "status-dot dot-online";
+            text.innerText = "Synced with Google Sheets";
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) {
+            console.error(e);
+            dot.className = "status-dot dot-offline";
+            text.innerText = "Offline: Script URL unreachable";
+            document.getElementById('loader').innerText = 'Connection Error. Please verify the Web App deployment is set to "Anyone".';
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Sync Error',
+                text: 'The dashboard cannot reach your Google Script. Ensure the script is deployed as a Web App with access set to "Anyone".'
+            });
+        }
+    }
+
+    function populateDeptFilter(data) {
+        const deptSelect = document.getElementById('filterDept');
+        const currentVal = deptSelect.value;
+        const depts = [...new Set(data.map(r => r.dept))].sort();
+        deptSelect.innerHTML = '<option value="">All Departments</option>';
+        depts.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d; opt.textContent = d;
+            deptSelect.appendChild(opt);
         });
+        deptSelect.value = currentVal;
+    }
+
+    function applyFilters() {
+        const dept = document.getElementById('filterDept').value;
+        const fromDate = document.getElementById('filterDateFrom').value;
+        const toDate = document.getElementById('filterDateTo').value;
+        const filtered = allRequests.filter(req => {
+            const matchDept = !dept || req.dept === dept;
+            const reqDate = req.date; 
+            const matchFrom = !fromDate || reqDate >= fromDate;
+            const matchTo = !toDate || reqDate <= toDate;
+            return matchDept && matchFrom && matchTo;
+        });
+        renderTable(filtered);
+    }
+
+    function clearFilters() {
+        document.getElementById('filterDept').value = "";
+        document.getElementById('filterDateFrom').value = "";
+        document.getElementById('filterDateTo').value = "";
+        renderTable(allRequests);
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('adminBody');
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+            document.getElementById('noDataMsg').style.display = 'block';
+            return;
+        } else {
+            document.getElementById('noDataMsg').style.display = 'none';
+        }
+        data.forEach(req => {
+            const tr = document.createElement('tr');
+            const cleanStatus = (req.status || 'Pending').toLowerCase().replace(/\s/g, '');
+            const statusClass = "st-" + cleanStatus;
+            
+            tr.innerHTML = `
+                <td><strong>#${req.id}</strong></td>
+                <td><b>${req.dept}</b><br><small>${req.date}</small></td>
+                <td>${req.reqBy}</td>
+                <td>${req.items ? req.items.replace(/\|/g, '<br>') : 'No items'}</td>
+                <td><span class="status-label ${statusClass}">${req.status || 'Pending'}</span></td>
+                <td>
+                    <select class="status-select" id="stat-${req.id}">
+                        <option value="Pending" ${req.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Approved" ${req.status === 'Approved' ? 'selected' : ''}>Approved</option>
+                        <option value="Disapproved" ${req.status === 'Disapproved' ? 'selected' : ''}>Disapproved</option>
+                        <option value="Processing" ${req.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                        <option value="Ready to Dispatch" ${req.status === 'Ready to Dispatch' ? 'selected' : ''}>Ready to Dispatch</option>
+                    </select>
+                </td>
+                <td><input type="text" class="admin-input" id="rec-${req.id}" value="${req.recBy || ''}" placeholder="Receiver"></td>
+                <td><input type="text" class="admin-input" id="rem-${req.id}" value="${req.remarks || ''}" placeholder="Note..."></td>
+                <td><button class="save-btn" onclick="updateRow('${req.id}')">SAVE</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function updateRow(id) {
+        Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        const status = document.getElementById(`stat-${id}`).value;
+        const remarks = document.getElementById(`rem-${id}`).value;
+        const recBy = document.getElementById(`rec-${id}`).value;
+        
+        try {
+            const res = await fetch(SCRIPT_URL, { 
+                method: "POST", 
+                mode: "no-cors", // Crucial for Google Apps Script redirects
+                body: JSON.stringify({ action: "updateStatus", id: id, status: status, remarks: remarks, recBy: recBy }) 
+            });
+            
+            // Note: with no-cors, we won't see the response body, but we can assume success if no error is thrown
+            Swal.fire({
+                icon: 'success',
+                title: 'Update Command Sent',
+                text: 'Status update was sent to the server. Refreshing data...',
+                timer: 2000
+            });
+            
+            setTimeout(fetchRequests, 1500);
+        } catch (e) {
+            Swal.fire('Error', 'Update failed. Check sync status.', 'error');
+        }
     }
 </script>
 </body>
